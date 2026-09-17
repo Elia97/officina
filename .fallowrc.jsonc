@@ -1,0 +1,9 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+
+  // Ogni gate è un comando: bin.ts lo carica con un import dinamico scelto per nome, che fallow
+  // non traccia. Esportano tutti `main` di proposito, è il contratto che bin.ts chiama.
+  "entry": ["src/checks/*.ts"],
+  // Dati di prova letti dal disco dai test, non codice del pacchetto.
+  "ignorePatterns": ["test/fixture-project/**"]
+}

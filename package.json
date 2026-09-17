@@ -1,0 +1,43 @@
+{
+  "name": "@elia97/officina",
+  "version": "0.1.0",
+  "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità e, più avanti, generatori.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Elia97/officina.git"
+  },
+  "bin": {
+    "officina": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "format": "biome check --write .",
+    "check:deadcode": "fallow dead-code",
+    "check:health": "fallow health --complexity --coverage coverage/coverage-final.json",
+    "ci": "biome ci --error-on-warnings . && pnpm run typecheck && pnpm run check:deadcode && pnpm run test && pnpm run check:health",
+    "prepublishOnly": "pnpm run ci && pnpm run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "@types/node": "^24.13.5",
+    "@vitest/coverage-v8": "^4.1.11",
+    "fallow": "^3.26.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}
