@@ -18,7 +18,13 @@ pnpm add -D @elia97/officina
     "check:routes": "officina check routes",
     "check:roadmap": "officina check roadmap",
     "check:placeholders": "officina check placeholders",
-    "check:vercel-cli": "officina check vercel-cli"
+    "check:vercel-cli": "officina check vercel-cli",
+    "gen": "officina gen",
+    "gen:section": "officina gen section",
+    "gen:page": "officina gen page",
+    "gen:component": "officina gen component",
+    "gen:collection": "officina gen collection",
+    "doctor": "officina doctor"
   }
 }
 ```
@@ -43,6 +49,16 @@ pnpm version <patch|minor|major>
 pnpm publish     # prepublishOnly lancia typecheck, test e build
 ```
 
+## Generatori
+
+`officina gen` avvolge plop con i generatori e i template del pacchetto, e scrive nel progetto da cui lo lanci: `section`, `page`, `component`, `collection`. `plop` e `ts-morph` sono dipendenze del pacchetto, non del progetto.
+
+I generatori scrivono codice che deve incastrarsi nello scaffold, quindi il progetto deve avere i punti di aggancio che si aspettano: i moduli che il codice generato importa e i file in cui iniettano. L'elenco è `src/lib/contract.ts`, e `officina doctor` dice, in qualunque repository, cosa manca. Finché manca qualcosa il pre-volo del generatore si ferma prima di scrivere un solo file.
+
+Un progetto aggiunge i propri generatori con un file `officina.generators.mjs` nella radice, con la firma di un plopfile: `export default function (plop)`.
+
+I test dei generatori girano sui punti di aggancio del progetto di prova, copiati da `vetrina`. Che un progetto vero li abbia ancora lo verifica `doctor`, non i test.
+
 ## Cosa arriverà
 
-I generatori (`officina gen …`) con i loro template, poi bundle budget, smoke di produzione, lighthouse, verifica analytics e icone.
+Bundle budget, smoke di produzione, lighthouse, verifica analytics e icone. Poi i preset di `ecommerce` e `monorepo`.

@@ -1,0 +1,20 @@
+---
+import Container from '@/components/ui/container.astro'
+import Heading from '@/components/ui/heading.astro'
+import Section from '@/components/ui/section.astro'
+import MainLayout from '@/layouts/main.astro'
+
+import { useTranslations } from '@/i18n/translate'
+
+const t = useTranslations(Astro.currentLocale)
+const title = t('page.{{pageKey}}.title')
+const description = t('page.{{pageKey}}.description')
+---
+
+<MainLayout {title} {description}>
+  <Section>
+    <Container>
+      <Heading as="h1" size="h1">{title}</Heading>
+    </Container>
+  </Section>
+</MainLayout>

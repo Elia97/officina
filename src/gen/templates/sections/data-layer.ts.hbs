@@ -1,0 +1,13 @@
+import { loadLocalizedSections, type SectionedPage } from '@/lib/content/localized-sections'
+
+export type {{pascalCase collection}}Sections = SectionedPage<'{{dashCase collection}}'>
+
+export async function get{{pascalCase collection}}Sections(locale?: string): Promise<{{pascalCase collection}}Sections> {
+  const { pick } = await loadLocalizedSections('{{dashCase collection}}', locale)
+
+  // INJECTION POINT per `pnpm gen:section` (ts-morph): le sezioni nuove aggiungono qui il
+  // loro pick() — il generatore verifica questo letterale di ritorno.
+  return {
+    {{camelCase section}}: pick('{{camelCase section}}'),
+  }
+}

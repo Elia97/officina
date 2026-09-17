@@ -1,0 +1,24 @@
+---
+import Container from '@/components/ui/container.astro'
+import Heading from '@/components/ui/heading.astro'
+import Section from '@/components/ui/section.astro'
+import MainLayout from '@/layouts/main.astro'
+
+import { useTranslations } from '@/i18n/translate'
+
+export function getStaticPaths() {
+  // TODO: ricava i percorsi da una collection, come nel blueprint content-section del plugin metodo.
+  return [{ params: { slug: 'example' } }]
+}
+
+const t = useTranslations(Astro.currentLocale)
+const { slug } = Astro.params
+---
+
+<MainLayout title={slug ?? t('page.{{pageKey}}.title')}>
+  <Section>
+    <Container>
+      <Heading as="h1" size="h1">{slug}</Heading>
+    </Container>
+  </Section>
+</MainLayout>

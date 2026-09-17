@@ -1,6 +1,6 @@
 {
   "name": "@elia97/officina",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità e, più avanti, generatori.",
   "type": "module",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -r src/gen/templates dist/gen/templates",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "format": "biome check --write .",
@@ -39,5 +39,9 @@
     "fallow": "^3.26.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "plop": "^4.0.5",
+    "ts-morph": "^28.0.0"
   }
 }

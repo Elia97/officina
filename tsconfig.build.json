@@ -7,6 +7,6 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts", "src/test-setup.ts", "src/test-fixture.ts"]
+  "include": ["src/**/*.ts", "src/**/*.mjs"],
+  "exclude": ["src/**/*.test.ts", "src/test-setup.ts", "src/test-fixture.ts", "src/gen/test-helpers/**"]
 }

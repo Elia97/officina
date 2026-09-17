@@ -1,0 +1,45 @@
+---
+{{#if image}}
+import { Image } from 'astro:assets'
+
+{{/if}}
+import Button from '@/components/ui/button.astro'
+import Container from '@/components/ui/container.astro'
+import Heading from '@/components/ui/heading.astro'
+import Section from '@/components/ui/section.astro'
+import type { {{pascalCase collection}}Sections } from '@/lib/{{dashCase collection}}'
+
+import { ctaHref } from '@/i18n/href'
+
+type Props = {{pascalCase collection}}Sections['{{camelCase section}}']
+
+const { title, body, {{#if image}}image, {{/if}}buttons } = Astro.props
+const href = (url: string) => ctaHref(Astro.currentLocale, url)
+---
+
+<Section class="border-b border-border bg-background">
+  <Container>
+    <Heading as="h2">{title}</Heading>
+    {body && <p class="mt-4 max-w-2xl text-pretty text-muted-foreground">{body}</p>}
+    {{#if image}}
+    <Image
+      src={image.src}
+      alt={image.alt}
+      widths={[640, 960, 1280, 1920]}
+      sizes="(min-width: 96rem) 96rem, 100vw"
+      class="mt-8 h-auto w-full rounded-lg"
+    />
+    {{/if}}
+    {
+      buttons.length > 0 && (
+        <div class="mt-8 flex flex-wrap gap-4">
+          {buttons.map((button, index) => (
+            <Button as="a" href={href(button.url)} variant={index === 0 ? 'default' : 'outline'}>
+              {button.label}
+            </Button>
+          ))}
+        </div>
+      )
+    }
+  </Container>
+</Section>

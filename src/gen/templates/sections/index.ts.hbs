@@ -1,0 +1,12 @@
+{{#if image}}
+import type { SchemaContext } from 'astro:content'
+{{/if}}
+import { z } from 'astro/zod'
+
+import { {{camelCase section}}SectionSchema } from './{{dashCase section}}'
+
+// INJECTION POINT per `pnpm gen:section` (ts-morph): il generatore verifica questa funzione
+// e la sua chiamata a z.discriminatedUnion.
+export function {{camelCase collection}}CollectionSchema({{#if image}}context: SchemaContext{{/if}}) {
+  return z.discriminatedUnion('section', [{{camelCase section}}SectionSchema({{#if image}}context{{/if}})])
+}

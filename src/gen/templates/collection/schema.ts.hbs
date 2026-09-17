@@ -1,0 +1,11 @@
+import { z } from 'astro/zod'
+
+export const {{camelCase name}}Schema = z.strictObject({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  {{#if document}}
+  pubDate: z.coerce.date(),
+  draft: z.boolean().default(false),
+  {{/if}}
+})
+export type {{pascalCase name}}Entry = z.infer<typeof {{camelCase name}}Schema>

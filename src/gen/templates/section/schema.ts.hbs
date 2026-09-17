@@ -1,0 +1,20 @@
+{{#if image}}
+import type { SchemaContext } from 'astro:content'
+{{/if}}
+import { z } from 'astro/zod'
+
+import { ctaSchema{{#if image}}, imageSchema{{/if}} } from '../common'
+
+export function {{camelCase section}}SectionSchema({{#if image}}{ image }: SchemaContext{{/if}}) {
+  return z.strictObject({
+    section: z.literal('{{camelCase section}}'),
+    title: z.string().min(1),
+    body: z.string().optional(),
+    {{#if image}}
+    image: imageSchema(image),
+    {{/if}}
+    buttons: z.array(ctaSchema).default([]),
+  })
+}
+
+export type {{pascalCase section}}Section = z.infer<ReturnType<typeof {{camelCase section}}SectionSchema>>

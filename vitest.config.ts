@@ -9,7 +9,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json'],
-      include: ['src/lib/**/*.ts'],
+      include: ['src/bin.ts', 'src/lib/**/*.ts', 'src/gen/**/*.mjs'],
       // Ogni buco voluto porta un `v8 ignore` con la sua ragione: sotto il 100% il gate si ferma.
       thresholds: { 100: true },
     },

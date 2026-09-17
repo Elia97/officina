@@ -1,0 +1,30 @@
+---
+import {{pascalCase section}} from '@/components/{{dashCase collection}}/{{dashCase section}}.astro'
+import Container from '@/components/ui/container.astro'
+import Heading from '@/components/ui/heading.astro'
+import Section from '@/components/ui/section.astro'
+
+import MainLayout from '@/layouts/main.astro'
+
+import { get{{pascalCase collection}}Sections } from '@/lib/{{dashCase collection}}'
+
+import { useTranslations } from '@/i18n/translate'
+
+// @gen:{{dashCase collection}}-imports (i generatori inseriscono i nuovi import SOPRA questa riga)
+
+const t = useTranslations(Astro.currentLocale)
+const title = t('page.{{pageKey}}.title')
+const description = t('page.{{pageKey}}.description')
+const content = await get{{pascalCase collection}}Sections(Astro.currentLocale)
+---
+
+<MainLayout {title} {description}>
+  <Section>
+    <Container>
+      <Heading as="h1" size="h1">{title}</Heading>
+    </Container>
+  </Section>
+  {{!-- Handlebars legge "}}}" come chiusura di un'espressione non escapata: il tilde chiude il mustache prima della graffa di Astro. --}}
+  <{{pascalCase section}} {...content.{{camelCase section~}}} />
+  {/* @gen:{{dashCase collection}}-sections */}
+</MainLayout>
