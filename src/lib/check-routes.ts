@@ -68,6 +68,7 @@ export function findingsFor(path: string, source: string): Hit[] {
 
   for (const match of flat.matchAll(SECTION_REFERENCE)) {
     const [, file, title] = match
+    /* v8 ignore next -- i due gruppi sono obbligatori nella regex, ma noUncheckedIndexedAccess pretende la guardia */
     if (!file || !title) continue
     const line = lineOf(match.index)
     const target = resolveTarget(path, file)
