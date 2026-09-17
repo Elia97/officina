@@ -1,13 +1,23 @@
 name: officina deploy
 description: La produzione esce da un tag di release — gate, build di Vercel, deploy e smoke sull'apice.
 
-# [HARD] I segreti non arrivano fin qui come `secrets`: il job che chiama dichiara
-# VERCEL_TOKEN, VERCEL_ORG_ID e VERCEL_PROJECT_ID nel proprio `env`, e i passi li leggono da lì.
+# [HARD] I tre segreti entrano come input e finiscono nell'`env` dei soli tre passi che li usano.
+# Nell'`env` del job li vedrebbero anche `pnpm install` e gli script di installazione di ogni
+# dipendenza, che girano codice di terzi con in mano un token di deploy.
 inputs:
   ref:
     description: 'Tag di release da deployare (vuoto = il tag più recente)'
     required: false
     default: ''
+  vercel-token:
+    description: 'Token Vercel — `${{ secrets.VERCEL_TOKEN }}`'
+    required: true
+  vercel-org-id:
+    description: 'ID della organizzazione Vercel — `${{ secrets.VERCEL_ORG_ID }}`'
+    required: true
+  vercel-project-id:
+    description: 'ID del progetto Vercel — `${{ secrets.VERCEL_PROJECT_ID }}`'
+    required: true
 
 outputs:
   url:
@@ -18,7 +28,7 @@ runs:
   using: composite
   steps:
     # Alla profondità di default actions/checkout non scarica tag, e il `git describe` sotto li vuole.
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
 
@@ -53,7 +63,7 @@ runs:
     - run: corepack enable
       shell: bash
 
-    - uses: actions/setup-node@v7
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version-file: '.nvmrc'
         cache: 'pnpm'
@@ -68,21 +78,35 @@ runs:
     - run: pnpm run ci
       shell: bash
 
-    # Dependabot non guarda dentro `pnpm dlx`: la major la segnala .github/workflows/vercel-cli.yml di officina.
-    - run: pnpm dlx vercel@59 pull --yes --environment=production
+    # Pin esatto: fissare la sola major ridà una CLI diversa ogni settimana, e un deploy che
+    # fallisce non si riproduce. Che su npm ne esca una major più nuova lo dice ogni lunedì
+    # `.github/workflows/vercel-cli.yml` di officina.
+    - run: pnpm dlx vercel@59.22.0 pull --yes --environment=production
       shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
 
     - run: pnpm run check:placeholders --env .vercel/.env.production.local
       shell: bash
 
-    - run: pnpm dlx vercel@59 build --prod
+    - run: pnpm dlx vercel@59.22.0 build --prod
       shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
 
     - name: Deploy su Vercel, produzione
       id: deploy
       shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
       run: |
-        url=$(pnpm dlx vercel@59 deploy --prebuilt --prod)
+        url=$(pnpm dlx vercel@59.22.0 deploy --prebuilt --prod)
         echo "url=$url" >> "$GITHUB_OUTPUT"
         echo "Deployment: $url"
 

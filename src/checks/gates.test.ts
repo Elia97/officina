@@ -37,6 +37,20 @@ const captureOutput = <T>(fn: () => T): { exitCode: T; lines: string[] } => {
   }
 }
 
+// I gate che leggono officina.config.ts sono asincroni: la spia va tolta dopo, non appena la
+// promessa esiste, altrimenti l'output esce dopo che nessuno lo sta più ascoltando.
+const captureAsync = async <T>(fn: () => Promise<T>): Promise<{ exitCode: T; lines: string[] }> => {
+  const lines: string[] = []
+  vi.spyOn(console, 'log').mockImplementation((line: string) => {
+    lines.push(line)
+  })
+  try {
+    return { exitCode: await fn(), lines }
+  } finally {
+    vi.restoreAllMocks()
+  }
+}
+
 describe('check:comments', () => {
   it('passa sul repository con --strict e dice quante righe sono commento', () => {
     const { exitCode, lines } = captureOutput(() => checkComments(['--strict']))
@@ -137,8 +151,8 @@ describe('check:routes', () => {
 })
 
 describe('check:roadmap', () => {
-  it('passa sulla roadmap vera', () => {
-    const { exitCode, lines } = captureOutput(() => checkRoadmap([]))
+  it('passa sulla roadmap vera', async () => {
+    const { exitCode, lines } = await captureAsync(() => checkRoadmap([]))
 
     expect(exitCode).toBe(0)
     expect(lines.join('\n')).toMatch(/giornate/)

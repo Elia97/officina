@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import process from 'node:process'
 
 import { type Coverage, coverageOf, extractLinkEvents } from '../lib/analytics-coverage.ts'
-import { loadConfig } from '../lib/config.ts'
+import { isRequired, loadConfig } from '../lib/config.ts'
 import { extractTriggers, googleTagIds, parseContainerData } from '../lib/gtm-container.ts'
 
 const LINK_TRACKING = 'src/lib/analytics/link-tracking.ts'
@@ -32,11 +32,19 @@ function reportCoverage(coverage: readonly Coverage[]): number {
 }
 
 export async function main(args: string[] = []): Promise<number> {
-  const { analytics = {} } = await loadConfig(process.cwd())
+  const config = await loadConfig(process.cwd())
+  const { analytics = {} } = config
   const gtmId = resolveGtmId(args)
   if (gtmId === null) {
-    console.log('Nessun container GTM da controllare: passane uno come argomento o imposta PUBLIC_GTM_ID.')
-    return 0
+    if (!isRequired(config, 'analytics')) {
+      console.log('check:analytics — spento da `features.analytics: false`.')
+      return 0
+    }
+    console.error(
+      '\n✗ Nessun container GTM da controllare: passane uno come argomento, imposta PUBLIC_GTM_ID,\n' +
+        '  oppure dichiara `features.analytics: false` se il progetto non ha analytics.\n',
+    )
+    return 1
   }
 
   const response = await fetch(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`, {

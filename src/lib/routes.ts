@@ -11,6 +11,9 @@ export type Expectations = {
 
 export type VerifiedRoute = { path: string; type: string }
 
+/** `/blog/[slug]` → `/blog/hello-world`: il percorso vero che sta per il pattern. */
+export type Representatives = Readonly<Record<string, string>>
+
 export const ERROR_PAGES: readonly string[] = ['/404', '/500']
 
 // Non escono da una pagina .astro: `robots.txt.ts` e `site.webmanifest.ts` sono endpoint,
@@ -103,19 +106,30 @@ export function missingRouteFailures(expected: Expectations, emitted: readonly s
   return failures
 }
 
-// Ordinate: l'ordine nativo di readdirSync cambia da un filesystem all'altro.
-export function auditRoutes(expected: Expectations): string[] {
-  return expected.exact
-    .map(({ route }) => route)
-    .filter((route) => !ERROR_PAGES.includes(route))
+/** I pattern dinamici che `officina.config.ts` non ha ancora mandato nessuno a visitare. */
+export function missingRepresentatives(expected: Expectations, representatives: Representatives = {}): string[] {
+  return expected.patterns
+    .map(({ label }) => label)
+    .filter((label) => representatives[label] === undefined)
     .sort()
+}
+
+// Ordinate: l'ordine nativo di readdirSync cambia da un filesystem all'altro. Un pattern dinamico
+// entra col percorso vero che il progetto gli ha dato: senza, resta una pagina che nessuno guarda.
+export function auditRoutes(expected: Expectations, representatives: Representatives = {}): string[] {
+  const exact = expected.exact.map(({ route }) => route).filter((route) => !ERROR_PAGES.includes(route))
+  const stand = expected.patterns
+    .map(({ label }) => representatives[label])
+    .filter((path): path is string => path !== undefined)
+  return [...exact, ...stand].sort()
 }
 
 export function smokeRoutes(
   expected: Expectations,
   nonHtmlRoutes: readonly VerifiedRoute[] = NON_HTML_ROUTES,
+  representatives: Representatives = {},
 ): VerifiedRoute[] {
-  return [...auditRoutes(expected).map((path) => ({ path, type: 'text/html' })), ...nonHtmlRoutes]
+  return [...auditRoutes(expected, representatives).map((path) => ({ path, type: 'text/html' })), ...nonHtmlRoutes]
 }
 
 export function orphanExceptions(expected: Expectations): string[] {

@@ -26,23 +26,30 @@ export function htmlEntries(html: string): string[] {
   return [...captured(html, /(?:src|href)="\/_astro\/([^"]+\.js)"/g, 1)]
 }
 
-export function staticClosure(entries: Iterable<string>, chunks: Map<string, Chunk>): Set<string> {
-  const seen = new Set<string>()
+/** `unknown`: i nomi citati che in `dist/client/_astro` non ci sono — saltarli vorrebbe dire misurare meno del vero. */
+export type Closure = { reached: Set<string>; unknown: Set<string> }
+
+export function staticClosure(entries: Iterable<string>, chunks: Map<string, Chunk>): Closure {
+  const reached = new Set<string>()
+  const unknown = new Set<string>()
   const queue = [...entries]
   while (queue.length > 0) {
     const name = queue.pop()
-    if (name === undefined || seen.has(name)) continue
+    if (name === undefined || reached.has(name)) continue
     const chunk = chunks.get(name)
-    if (chunk === undefined) continue
-    seen.add(name)
+    if (chunk === undefined) {
+      unknown.add(name)
+      continue
+    }
+    reached.add(name)
     queue.push(...chunk.static)
   }
-  return seen
+  return { reached, unknown }
 }
 
 export function deferredClosure(reached: Set<string>, chunks: Map<string, Chunk>): Set<string> {
   const entries = [...reached].flatMap((name) => [...(chunks.get(name)?.dynamic ?? [])])
-  return new Set([...staticClosure(entries, chunks)].filter((name) => !reached.has(name)))
+  return new Set([...staticClosure(entries, chunks).reached].filter((name) => !reached.has(name)))
 }
 
 export const CSS_BUDGET_GZIP = 12 * 1024
