@@ -5,6 +5,7 @@ import {
   auditRoutes,
   ERROR_PAGES,
   expectedRoutes,
+  missingRepresentatives,
   missingRouteFailures,
   NON_HTML_ROUTES,
   orphanExceptions,
@@ -18,6 +19,10 @@ const prerendered = '// no annotation: prerendered by default\n'
 const optedOut = 'export const prerender = false\n'
 
 const template = () => expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR)
+
+const BLOG = `${PAGES_DIR}/blog/[slug].astro`
+const withBlog = () => expectedRoutes([...readPageFiles(PAGES_DIR), { file: BLOG, source: prerendered }], PAGES_DIR)
+const REPRESENTATIVES = { '/blog/[slug]': '/blog/ciao-mondo' }
 
 useFixtureProject()
 
@@ -127,6 +132,29 @@ describe('auditRoutes', () => {
     const pages = [...readPageFiles(PAGES_DIR), { file: 'src/pages/live.astro', source: optedOut }]
 
     expect(auditRoutes(expectedRoutes(pages, PAGES_DIR))).not.toContain('/live')
+  })
+})
+
+describe('i rappresentanti delle rotte dinamiche', () => {
+  it('nomina il pattern che nessuno va a visitare, e tace su quello che ha un percorso vero', () => {
+    expect(missingRepresentatives(withBlog())).toEqual(['/blog/[slug]'])
+    expect(missingRepresentatives(withBlog(), REPRESENTATIVES)).toEqual([])
+  })
+
+  it('su un progetto senza rotte dinamiche non chiede niente', () => {
+    expect(missingRepresentatives(template())).toEqual([])
+  })
+
+  it('manda il percorso vero fra le rotte da guardare, al posto del pattern', () => {
+    expect(auditRoutes(withBlog())).not.toContain('/blog/ciao-mondo')
+    expect(auditRoutes(withBlog(), REPRESENTATIVES)).toContain('/blog/ciao-mondo')
+  })
+
+  it('lo porta anche allo smoke, con il tipo delle pagine', () => {
+    expect(smokeRoutes(withBlog(), NON_HTML_ROUTES, REPRESENTATIVES)).toContainEqual({
+      path: '/blog/ciao-mondo',
+      type: 'text/html',
+    })
   })
 })
 

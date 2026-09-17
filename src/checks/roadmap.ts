@@ -4,18 +4,24 @@ import process from 'node:process'
 
 import { findingsFor } from '../lib/check-roadmap.ts'
 import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts'
+import { isRequired, loadConfig } from '../lib/config.ts'
 
 const ROADMAP = 'docs/ROADMAP.md'
 
 // Esporta main ed esegue solo se lanciato direttamente: la copertura non segue i sottoprocessi,
 // quindi un gate provato con `node scripts/...` risulterebbe non testato.
-export function main(args?: string[]): number {
+export async function main(args?: string[]): Promise<number> {
   const options = cliOptions(args)
 
-  // Un progetto appena creato dal template può non averla ancora scritta.
+  // Che un progetto la roadmap non ce l'abbia è una scelta, e una scelta si dichiara: il silenzio
+  // vale `'required'`, e un gate che esce 0 su un file che non c'è non afferma niente.
   if (!existsSync(ROADMAP)) {
-    console.log(`\ncheck:roadmap — ${ROADMAP} non c'è ancora\n`)
-    return 0
+    if (!isRequired(await loadConfig(process.cwd()), 'roadmap')) {
+      console.log(`\ncheck:roadmap — spento da \`features.roadmap: false\`\n`)
+      return 0
+    }
+    console.error(`\n✗ check:roadmap — ${ROADMAP} non c'è: scrivila, o dichiara \`features.roadmap: false\`\n`)
+    return 1
   }
 
   const findings: Finding[] = findingsFor(readFileSync(ROADMAP, 'utf8')).map((f) => ({
@@ -38,4 +44,4 @@ export function main(args?: string[]): number {
   return exitCode(findings, options.strict)
 }
 
-if (import.meta.main) process.exit(main())
+if (import.meta.main) process.exit(await main())

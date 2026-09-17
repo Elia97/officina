@@ -33,7 +33,7 @@ const DIST = 'dist/client'
 const ASSETS = join(DIST, '_astro')
 const PAGES = 'src/pages'
 
-type MeasuredPage = { route: string; gzip: number; deferredGzip: number; budget: Budget }
+type MeasuredPage = { route: string; gzip: number; deferredGzip: number; budget: Budget; unknown: string[] }
 
 const gz = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`
 
@@ -57,15 +57,24 @@ function measurePages(chunks: Map<string, Chunk>, budgets: readonly Budget[]): M
   return filesWithExtension(DIST, '.html')
     .map((htmlPath) => {
       const route = routeOf(htmlPath, DIST)
-      const reached = staticClosure(htmlEntries(readFileSync(htmlPath, 'utf8')), chunks)
+      const { reached, unknown } = staticClosure(htmlEntries(readFileSync(htmlPath, 'utf8')), chunks)
       return {
         route,
         gzip: total(reached),
         deferredGzip: total(deferredClosure(reached, chunks)),
         budget: budgetFor(route, budgets),
+        unknown: [...unknown].sort(),
       }
     })
     .sort((a, b) => b.gzip - a.gzip)
+}
+
+// Zero JavaScript su una rotta è un esito normale in Astro; un nome citato che fra i chunk non c'è
+// vuol dire che la misura non copre tutto il bundle, e allora non afferma niente.
+function unknownChunkFailures(pages: readonly MeasuredPage[]): string[] {
+  return pages
+    .filter((page) => page.unknown.length > 0)
+    .map((page) => `${page.route}: formato del bundle non riconosciuto — ${page.unknown.join(', ')} non è in ${ASSETS}`)
 }
 
 function overBudgetFailures(pages: readonly MeasuredPage[]): string[] {
@@ -125,7 +134,7 @@ export async function main(): Promise<number> {
     pages.map((page) => page.route),
     DIST,
   )
-  failures.push(...overBudgetFailures(pages))
+  failures.push(...unknownChunkFailures(pages), ...overBudgetFailures(pages))
 
   const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)

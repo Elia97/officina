@@ -1,0 +1,62 @@
+name: Rilascio
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # crea la release
+  id-token: write # trusted publishing su npm (OIDC)
+
+concurrency:
+  group: rilascio-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: npm e release su GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+
+      # Il tag è la versione, non un'etichetta: se i due numeri divergono, quello che finisce su npm
+      # non è quello che il tag dice, e le action richiamate per tag puntano altrove.
+      - name: Il tag corrisponde a `version`
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::$TAG non corrisponde a package.json ($version)"
+            exit 1
+          fi
+
+      - run: pnpm run ci
+
+      - run: pnpm run build
+
+      - run: pnpm run test:pack
+
+      # Trusted publishing vuole npm ≥ 11.5.1, che è più recente di quello che porta Node 24.
+      - run: npm install -g npm@latest
+
+      # Nessun token: npm scambia l'OIDC del workflow, e da lì esce anche la provenance.
+      - run: npm publish --provenance --access public
+
+      - name: Release su GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --generate-notes

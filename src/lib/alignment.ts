@@ -1,5 +1,5 @@
-import type { OfficinaConfig } from './config.ts'
 import type { ContractGap } from './contract.ts'
+import { mentions } from './workflows.ts'
 
 // Oltre agli agganci dei generatori: ciò che dice che un progetto prende metodo, gate, generatori
 // e verifiche da fuori, senza una copia propria rimasta indietro.
@@ -120,15 +120,32 @@ const LEFTOVERS: readonly { path: string; reason: string }[] = [
 const holds = (paths: readonly string[], target: string): boolean =>
   target.endsWith('/') ? paths.some((path) => path.startsWith(target)) : paths.includes(target)
 
-export function leftoverGaps({ paths, read }: ProjectFiles): ContractGap[] {
-  const gaps: ContractGap[] = LEFTOVERS.filter(({ path }) => holds(paths, path)).map(({ path, reason }) => ({
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+// I file JSON si leggono come JSON: `"hooks"` dentro un valore qualunque non è un blocco `hooks`,
+// e un file illeggibile non è un file che dichiara quello che si cerca.
+function readJson({ read }: ProjectFiles, path: string): Record<string, unknown> | undefined {
+  const source = read(path)
+  if (source === undefined) return undefined
+  try {
+    const value: unknown = JSON.parse(source)
+    return isRecord(value) ? value : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function leftoverGaps(files: ProjectFiles): ContractGap[] {
+  const gaps: ContractGap[] = LEFTOVERS.filter(({ path }) => holds(files.paths, path)).map(({ path, reason }) => ({
     path,
     message: `residuo: ${reason}`,
   }))
-  if (read('.claude/settings.json')?.includes('"hooks"')) {
+  if (readJson(files, '.claude/settings.json')?.hooks !== undefined) {
     gaps.push({ path: '.claude/settings.json', message: `blocco \`hooks\` residuo: il guard ${FROM_PLUGIN}` })
   }
-  if (read('.mcp.json')?.includes('astro-docs')) {
+  const servers = readJson(files, '.mcp.json')?.mcpServers
+  if (isRecord(servers) && servers['astro-docs'] !== undefined) {
     gaps.push({ path: '.mcp.json', message: `server \`astro-docs\` residuo: ${FROM_PLUGIN}` })
   }
   return gaps
@@ -137,59 +154,14 @@ export function leftoverGaps({ paths, read }: ProjectFiles): ContractGap[] {
 export const BIOME_PRESET = '@elia97/officina/biome'
 export const LEFTHOOK_PRESET = 'node_modules/@elia97/officina/presets/lefthook.yml'
 
-export function presetGaps({ read }: ProjectFiles): ContractGap[] {
+export function presetGaps(files: ProjectFiles): ContractGap[] {
   const gaps: ContractGap[] = []
-  if (!read('biome.json')?.includes(BIOME_PRESET)) {
+  const extended = readJson(files, 'biome.json')?.extends
+  if (!(Array.isArray(extended) && extended.includes(BIOME_PRESET))) {
     gaps.push({ path: 'biome.json', message: `non estende \`${BIOME_PRESET}\`` })
   }
-  if (!read('lefthook.yml')?.includes(LEFTHOOK_PRESET)) {
+  if (!mentions(files.read('lefthook.yml'), LEFTHOOK_PRESET)) {
     gaps.push({ path: 'lefthook.yml', message: `non estende \`${LEFTHOOK_PRESET}\`` })
   }
   return gaps
-}
-
-const ACTIONS: readonly { workflow: string; action: string }[] = [
-  { workflow: '.github/workflows/ci.yml', action: 'ci' },
-  { workflow: '.github/workflows/ci.yml', action: 'review' },
-  { workflow: '.github/workflows/deploy.yml', action: 'deploy' },
-  { workflow: '.github/workflows/lighthouse.yml', action: 'lighthouse' },
-]
-
-// Un tag di versione o uno SHA intero: `@main` farebbe girare in produzione passi mai collaudati.
-const PINNED_REF = /^(v\d+\.\d+\.\d+|[0-9a-f]{40})$/
-
-function actionGap(source: string | undefined, action: string): string | undefined {
-  const name = `Elia97/officina/actions/${action}`
-  if (source === undefined) return `manca: i suoi passi arrivano da \`${name}\``
-  const ref = new RegExp(`${name}@(\\S+)`).exec(source)?.[1]
-  if (ref === undefined) return `non usa \`${name}\``
-  return PINNED_REF.test(ref)
-    ? undefined
-    : `\`${name}@${ref}\`: il riferimento va fissato a un tag di versione o a uno SHA`
-}
-
-export function workflowGaps({ read }: ProjectFiles): ContractGap[] {
-  return ACTIONS.flatMap(({ workflow, action }) => {
-    const message = actionGap(read(workflow), action)
-    return message === undefined ? [] : [{ path: workflow, message }]
-  })
-}
-
-const CONFIG = 'officina.config.ts'
-
-function siteUrlGap(siteUrl: string | undefined): string | undefined {
-  if (siteUrl === undefined) return '`siteUrl` assente: `check smoke` non ha un host canonico'
-  if (!URL.canParse(siteUrl)) return `\`siteUrl\` non è un URL: \`${siteUrl}\``
-  return siteUrl.endsWith('/') ? `\`siteUrl\` finisce con una barra: \`${siteUrl}\`` : undefined
-}
-
-/** `loaded` è la configurazione letta, l'errore che il suo caricamento ha sollevato, o `undefined` se il file non c'è. */
-export function configGaps(loaded: OfficinaConfig | Error | undefined): ContractGap[] {
-  if (loaded === undefined) return [{ path: CONFIG, message: 'manca: i valori del progetto per officina stanno qui' }]
-  if (loaded instanceof Error) return [{ path: CONFIG, message: `non si carica: ${loaded.message}` }]
-  const messages = [
-    siteUrlGap(loaded.siteUrl),
-    loaded.icons === undefined ? '`icons.background` assente: `gen icons` non ha un colore di fondo' : undefined,
-  ]
-  return messages.filter((message) => message !== undefined).map((message) => ({ path: CONFIG, message }))
 }

@@ -32,29 +32,46 @@ describe('htmlEntries', () => {
 describe('staticClosure', () => {
   it('follows static edges transitively and stops at dynamic ones', () => {
     const chunks = graph({ 'a.js': { static: ['b.js'], dynamic: ['z.js'] }, 'b.js': { static: ['c.js'] }, 'c.js': {} })
-    expect([...staticClosure(['a.js'], chunks)].sort()).toEqual(['a.js', 'b.js', 'c.js'])
+    expect([...staticClosure(['a.js'], chunks).reached].sort()).toEqual(['a.js', 'b.js', 'c.js'])
   })
 
-  it('ignores edges into chunks that were not emitted', () => {
-    expect([...staticClosure(['a.js'], graph({ 'a.js': { static: ['gone.js'] } }))]).toEqual(['a.js'])
+  it('tiene da parte gli archi verso chunk che non sono stati emessi, invece di saltarli', () => {
+    const closure = staticClosure(['a.js'], graph({ 'a.js': { static: ['gone.js'] } }))
+
+    expect([...closure.reached]).toEqual(['a.js'])
+    expect([...closure.unknown]).toEqual(['gone.js'])
+  })
+
+  it("segnala anche un nome citato dall'HTML che fra i chunk non c'è", () => {
+    const closure = staticClosure(['assente.js'], graph({}))
+
+    expect([...closure.reached]).toEqual([])
+    expect([...closure.unknown]).toEqual(['assente.js'])
+  })
+
+  it('su una pagina senza JavaScript non trova niente e non segnala niente', () => {
+    const closure = staticClosure([], graph({}))
+
+    expect([...closure.reached]).toEqual([])
+    expect([...closure.unknown]).toEqual([])
   })
 
   it('terminates on a cycle', () => {
     const chunks = graph({ 'a.js': { static: ['b.js'] }, 'b.js': { static: ['a.js'] } })
-    expect([...staticClosure(['a.js'], chunks)].sort()).toEqual(['a.js', 'b.js'])
+    expect([...staticClosure(['a.js'], chunks).reached].sort()).toEqual(['a.js', 'b.js'])
   })
 })
 
 describe('deferredClosure', () => {
   it('returns what only an `await import()` reaches, with its own static tail', () => {
     const chunks = graph({ 'a.js': { dynamic: ['heavy.js'] }, 'heavy.js': { static: ['maths.js'] }, 'maths.js': {} })
-    const deferred = deferredClosure(staticClosure(['a.js'], chunks), chunks)
+    const deferred = deferredClosure(staticClosure(['a.js'], chunks).reached, chunks)
     expect([...deferred].sort()).toEqual(['heavy.js', 'maths.js'])
   })
 
   it('excludes anything the static closure already reached', () => {
     const chunks = graph({ 'a.js': { static: ['b.js'], dynamic: ['b.js'] }, 'b.js': {} })
-    expect([...deferredClosure(staticClosure(['a.js'], chunks), chunks)]).toEqual([])
+    expect([...deferredClosure(staticClosure(['a.js'], chunks).reached, chunks)]).toEqual([])
   })
 })
 

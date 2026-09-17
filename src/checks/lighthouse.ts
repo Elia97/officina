@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+import { loadConfig } from '../lib/config.ts'
 import { type LighthouseRc, lighthouseConfig } from '../lib/lighthouse.ts'
 import { auditRoutes, expectedRoutes, readPageFiles } from '../lib/routes.ts'
 
@@ -21,11 +22,12 @@ function runLocal(): number {
   return spawnSync('bash', [script], { stdio: 'inherit', env }).status ?? 1
 }
 
-export function main(args: string[] = []): number {
+export async function main(args: string[] = []): Promise<number> {
   if (args.includes('--local')) return runLocal()
 
+  const { routes: configured = {} } = await loadConfig(process.cwd())
   const rc: LighthouseRc = JSON.parse(readFileSync(RC_FILE, 'utf8'))
-  const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR))
+  const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), configured.representatives)
   const resolved = lighthouseConfig(rc, routes, process.env)
 
   console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}\n`)
@@ -36,10 +38,12 @@ export function main(args: string[] = []): number {
   const config = join(dir, 'lighthouserc.json')
   writeFileSync(config, JSON.stringify(resolved, null, 2))
 
-  const { status } = spawnSync('pnpm', ['dlx', '@lhci/cli', 'autorun', `--config=${config}`], { stdio: 'inherit' })
+  const { status } = spawnSync('pnpm', ['dlx', '@lhci/cli@0.15.1', 'autorun', `--config=${config}`], {
+    stdio: 'inherit',
+  })
   rmSync(dir, { recursive: true, force: true })
 
   return status ?? 1
 }
 
-if (import.meta.main) process.exit(main(process.argv.slice(2)))
+if (import.meta.main) process.exit(await main(process.argv.slice(2)))

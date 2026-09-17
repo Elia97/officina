@@ -31,7 +31,7 @@ function printFailures(failures: readonly CheckResult[]): void {
 }
 
 export async function main(args: string[] = []): Promise<number> {
-  const { siteUrl, smoke = {} } = await loadConfig(process.cwd())
+  const { siteUrl, smoke = {}, routes = {} } = await loadConfig(process.cwd())
   const [url] = args
 
   if (siteUrl === undefined) {
@@ -53,7 +53,8 @@ export async function main(args: string[] = []): Promise<number> {
     siteUrl,
     securityHeaders: smoke.securityHeaders ?? SECURITY_HEADERS,
   }
-  const pages = smokeRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), smoke.nonHtmlRoutes)
+  const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR)
+  const pages = smokeRoutes(expected, smoke.nonHtmlRoutes, routes.representatives)
 
   console.log(`\nSmoke di produzione — ${baseUrl}\n`)
 

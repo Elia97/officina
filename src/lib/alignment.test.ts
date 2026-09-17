@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   BIOME_PRESET,
   CI_STEPS,
-  configGaps,
   dependencyGaps,
   EXPECTED_SCRIPTS,
   LEFTHOOK_PRESET,
@@ -11,7 +10,6 @@ import {
   type ProjectFiles,
   presetGaps,
   scriptGaps,
-  workflowGaps,
 } from './alignment.ts'
 
 const alignedScripts = (): Record<string, string> => ({
@@ -104,6 +102,21 @@ describe('leftoverGaps', () => {
 
     expect(leftoverGaps(project).map(({ path }) => path)).toEqual(['.claude/settings.json', '.mcp.json'])
   })
+
+  it('legge JSON, non stringhe: «hooks» dentro un valore qualunque non è un blocco hooks', () => {
+    const project = files([], {
+      '.claude/settings.json': '{ "permissions": { "allow": ["Bash(pnpm run hooks)"] } }',
+      '.mcp.json': '{ "note": "niente astro-docs qui" }',
+    })
+
+    expect(leftoverGaps(project)).toEqual([])
+  })
+
+  it('su un JSON illeggibile, o che non è un oggetto, non afferma niente', () => {
+    const project = files([], { '.claude/settings.json': '{ "hooks": ', '.mcp.json': '[]' })
+
+    expect(leftoverGaps(project)).toEqual([])
+  })
 })
 
 describe('presetGaps', () => {
@@ -122,68 +135,19 @@ describe('presetGaps', () => {
       'lefthook.yml',
     ])
   })
-})
 
-describe('configGaps', () => {
-  it('non trova niente in una configurazione con URL e colore delle icone', () => {
-    expect(configGaps({ siteUrl: 'https://prova.test', icons: { background: '#fafafa' } })).toEqual([])
+  it('vuole il preset dentro `extends`, non nominato da qualche altra parte nel file', () => {
+    const project = files([], { 'biome.json': `{ "linter": { "nota": "${BIOME_PRESET}" } }` })
+
+    expect(presetGaps(project).map(({ path }) => path)).toContain('biome.json')
   })
 
-  it('distingue il file che manca da quello che non si carica', () => {
-    expect(messages(configGaps(undefined))).toEqual(['manca: i valori del progetto per officina stanno qui'])
-    expect(messages(configGaps(new Error("Cannot find module '@/lib/site'")))).toEqual([
-      "non si carica: Cannot find module '@/lib/site'",
-    ])
-  })
-
-  it('nomina le due voci che i comandi pretendono', () => {
-    expect(messages(configGaps({}))).toEqual([
-      '`siteUrl` assente: `check smoke` non ha un host canonico',
-      '`icons.background` assente: `gen icons` non ha un colore di fondo',
-    ])
-  })
-
-  it('boccia un siteUrl che non è un URL, o che porta la barra finale', () => {
-    const icons = { background: '#fafafa' }
-
-    expect(messages(configGaps({ siteUrl: 'prova.test', icons }))).toEqual(['`siteUrl` non è un URL: `prova.test`'])
-    expect(messages(configGaps({ siteUrl: 'https://prova.test/', icons }))).toEqual([
-      '`siteUrl` finisce con una barra: `https://prova.test/`',
-    ])
-  })
-})
-
-describe('workflowGaps', () => {
-  const workflows = (ref: string) => ({
-    '.github/workflows/ci.yml': `- uses: Elia97/officina/actions/ci@${ref}\n- uses: Elia97/officina/actions/review@${ref}\n`,
-    '.github/workflows/deploy.yml': `- uses: Elia97/officina/actions/deploy@${ref}\n`,
-    '.github/workflows/lighthouse.yml': `- uses: Elia97/officina/actions/lighthouse@${ref}\n`,
-  })
-
-  it('non trova niente quando i workflow prendono i passi da officina, fissati a un tag o a uno SHA', () => {
-    expect(workflowGaps(files([], workflows('v0.4.0')))).toEqual([])
-    expect(workflowGaps(files([], workflows('0123456789abcdef0123456789abcdef01234567')))).toEqual([])
-  })
-
-  it('boccia un riferimento mobile: in produzione girerebbero passi mai collaudati', () => {
-    expect(messages(workflowGaps(files([], workflows('main'))))).toContain(
-      '`Elia97/officina/actions/deploy@main`: il riferimento va fissato a un tag di versione o a uno SHA',
-    )
-  })
-
-  it('distingue il workflow che manca da quello che porta ancora i propri passi', () => {
+  it('non si accontenta di una riga commentata in lefthook.yml', () => {
     const project = files([], {
-      '.github/workflows/deploy.yml': '- run: pnpm dlx vercel@59 deploy --prebuilt --prod\n',
+      'biome.json': `{ "extends": ["${BIOME_PRESET}"] }`,
+      'lefthook.yml': `extends:\n  # - ${LEFTHOOK_PRESET}\n`,
     })
 
-    expect(workflowGaps(project)).toEqual([
-      { path: '.github/workflows/ci.yml', message: 'manca: i suoi passi arrivano da `Elia97/officina/actions/ci`' },
-      { path: '.github/workflows/ci.yml', message: 'manca: i suoi passi arrivano da `Elia97/officina/actions/review`' },
-      { path: '.github/workflows/deploy.yml', message: 'non usa `Elia97/officina/actions/deploy`' },
-      {
-        path: '.github/workflows/lighthouse.yml',
-        message: 'manca: i suoi passi arrivano da `Elia97/officina/actions/lighthouse`',
-      },
-    ])
+    expect(presetGaps(project).map(({ path }) => path)).toEqual(['lefthook.yml'])
   })
 })

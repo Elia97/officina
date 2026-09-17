@@ -38,7 +38,7 @@ SERVER_PID=''
 cleanup() {
   if [[ -n "${SERVER_PID}" ]]; then
     kill -- "-${SERVER_PID}" 2>/dev/null || kill "${SERVER_PID}" 2>/dev/null || true
-    pkill -f "serve@14 .*--listen ${PORT}" 2>/dev/null || true
+    pkill -f "serve@14.2.6 .*--listen ${PORT}" 2>/dev/null || true
   fi
   find . -maxdepth 1 \( -name '*wsl.localhost*' -o -name 'undefined*' \) -exec rm -rf {} + 2>/dev/null || true
 }
@@ -55,7 +55,7 @@ fi
 echo "✓ robots.txt: Allow: /"
 
 echo "→ avvio del server statico su :${PORT}"
-setsid pnpm dlx serve@14 "${OUT_DIR}/client" --listen "${PORT}" --no-clipboard >/dev/null 2>&1 &
+setsid pnpm dlx serve@14.2.6 "${OUT_DIR}/client" --listen "${PORT}" --no-clipboard >/dev/null 2>&1 &
 SERVER_PID=$!
 
 for _ in $(seq 1 60); do

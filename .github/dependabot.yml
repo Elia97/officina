@@ -1,0 +1,16 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Le action di terze parti dentro actions/*/action.yml sono fissate allo SHA intero: senza
+  # Dependabot quello SHA resta fermo per sempre, correzioni di sicurezza comprese.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /actions/*
+    schedule:
+      interval: weekly
