@@ -22,7 +22,7 @@ describe('checkBotIdChallenge', () => {
     const [result] = await checkBotIdChallenge(context(always({ status: 404 })))
 
     expect(result?.status).toBe('fail')
-    expect(result?.detail).toMatch(/expected 200 from the rewrite/)
+    expect(result?.detail).toMatch(/atteso 200 dal rewrite/)
   })
 
   it('reports a network error', async () => {
@@ -50,8 +50,8 @@ describe('checkCanonicalHost', () => {
   })
 
   it.each([
-    [{ status: 200, headers: { location: `${SITE_URL}/` } }, /expected 308, got 200/],
-    [{ status: 308, headers: { location: 'https://elsewhere.test/' } }, /does not point at/],
+    [{ status: 200, headers: { location: `${SITE_URL}/` } }, /atteso 308, ricevuto 200/],
+    [{ status: 308, headers: { location: 'https://elsewhere.test/' } }, /non punta a/],
     [{ status: 308, headers: {} }, /location ""/],
   ])('fails on %o', async (init, detail) => {
     const [result] = await checkCanonicalHost(context(always(init)))
@@ -78,8 +78,8 @@ describe('checkTrailingSlash', () => {
   })
 
   it.each([
-    [{ status: 200, headers: { location: `${SITE_URL}${probed}` } }, /expected 308/],
-    [{ status: 308, headers: { location: `${SITE_URL}/altrove` } }, /does not point at/],
+    [{ status: 200, headers: { location: `${SITE_URL}${probed}` } }, /atteso 308/],
+    [{ status: 308, headers: { location: `${SITE_URL}/altrove` } }, /non punta a/],
     [{ status: 308, headers: {} }, /location ""/],
   ])('fails on %o', async (init, detail) => {
     const [result] = await checkTrailingSlash(context(always(init)), PAGES)
@@ -116,10 +116,10 @@ describe('runChecks', () => {
     expect(results.map(({ check }) => check)).toEqual([
       ...PAGES.map(({ path }) => `GET ${path}`),
       ...Object.keys(SECURITY_HEADERS).map((header) => `header ${header}`),
-      'no x-robots-tag on the production host',
-      'BotID challenge proxied same-origin',
-      'www → apex 308',
-      'trailing slash → 308',
+      'nessun x-robots-tag sull’host di produzione',
+      'challenge di BotID servita dalla stessa origine',
+      'www → apice 308',
+      'barra finale → 308',
     ])
   })
 })

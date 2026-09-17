@@ -78,16 +78,18 @@ function overBudgetFailures(pages: readonly MeasuredPage[]): string[] {
 }
 
 function printPages(pages: readonly MeasuredPage[], width: number): void {
-  console.log('\nBundle budget — client JS per route (gzip, static closure)\n')
+  console.log('\nBudget di bundle — JS del client per rotta (gzip, chiusura statica)\n')
   console.log(
-    `${'ROUTE'.padEnd(width)}   ${'STATIC'.padStart(9)}   ${'BUDGET'.padStart(9)}   ${'DEFERRED'.padStart(9)}`,
+    `${'ROTTA'.padEnd(width)}   ${'STATICO'.padStart(9)}   ${'BUDGET'.padStart(9)}   ${'DIFFERITO'.padStart(9)}`,
   )
   for (const page of pages) {
     const deferred = page.deferredGzip > 0 ? gz(page.deferredGzip) : '—'
     const line = `${page.route.padEnd(width)}   ${gz(page.gzip).padStart(9)}   ${gz(page.budget.maxGzip).padStart(9)}   ${deferred.padStart(9)}`
     console.log(page.gzip > page.budget.maxGzip ? `${line}  ✗` : line)
   }
-  console.log('\nDEFERRED = reachable only through `await import()` (loaded after paint, behind a runtime guard).')
+  console.log(
+    '\nDIFFERITO = raggiungibile solo da `await import()` (caricato dopo il primo paint, dietro una guardia a runtime).',
+  )
 }
 
 function printStylesheets(
@@ -97,7 +99,7 @@ function printStylesheets(
   width: number,
 ): void {
   const worst = heaviestStylesheet(stylesheets)
-  console.log(`\nCSS (render-blocking, heaviest sheet a route links)`)
+  console.log(`\nCSS (blocca il rendering: il foglio più pesante che una rotta collega)`)
   for (const sheet of [...stylesheets].sort((a, b) => b.gzip - a.gzip)) {
     const mark = sheet === worst && failed ? '  ✗' : ''
     console.log(
@@ -108,9 +110,7 @@ function printStylesheets(
 
 function printSsrNote(expected: Expectations): void {
   if (expected.ssr.length === 0) return
-  console.log(
-    `\nNOTE  ${expected.ssr.length} page(s) opted out with \`export const prerender = false\` and are outside this budget:`,
-  )
+  console.log(`\nNOTA  ${expected.ssr.length} pagina/e con \`export const prerender = false\`, fuori da questo budget:`)
   for (const file of expected.ssr) console.log(`      - ${file}`)
 }
 
@@ -127,7 +127,7 @@ export async function main(): Promise<number> {
   )
   failures.push(...overBudgetFailures(pages))
 
-  const width = Math.max('ROUTE'.length, ...pages.map((p) => p.route.length))
+  const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)
 
   const stylesheets = readStylesheets()
@@ -137,10 +137,10 @@ export async function main(): Promise<number> {
   printSsrNote(expected)
 
   if (failures.length > 0) {
-    console.error(`\n✗ Bundle budget:\n${failures.map((f) => `  - ${f}`).join('\n')}\n`)
+    console.error(`\n✗ Budget di bundle:\n${failures.map((f) => `  - ${f}`).join('\n')}\n`)
     return 1
   }
-  console.log('\n✓ Bundle budget respected on every expected route.\n')
+  console.log('\n✓ Budget di bundle rispettato su ogni rotta attesa.\n')
   return 0
 }
 

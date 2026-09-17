@@ -18,7 +18,6 @@ pnpm add -D @elia97/officina
     "check:routes": "officina check routes",
     "check:roadmap": "officina check roadmap",
     "check:placeholders": "officina check placeholders",
-    "check:vercel-cli": "officina check vercel-cli",
     "perf:bundle": "officina check bundle",
     "smoke:prod": "officina check smoke",
     "analytics:verify": "officina check analytics",
@@ -43,9 +42,9 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 |---|---|---|
 | `check bundle` | il JavaScript e il CSS di `dist/client`, gzip, contro un budget per rotta | `src/pages` |
 | `check smoke [url]` | la produzione viva: pagine, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
-| `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi di `src/lib/analytics/link-tracking.ts` | — |
+| `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi del modulo di link-tracking del progetto (`analytics.linkTracking`) | — |
 | `check lighthouse [--local]` | Lighthouse CI sul `.lighthouserc.json` del progetto; `--local` fa build, server e Chrome da sé | `src/pages` |
-| `gen icons` | le icone del manifest, disegnate da `public/favicon.svg` | — |
+| `gen icons` | le icone del manifest, disegnate dal favicon SVG in `public/` del progetto | — |
 
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
@@ -69,6 +68,58 @@ Ogni voce è facoltativa, tranne `siteUrl` per `check smoke` e `icons.background
 
 `sharp` è una dipendenza facoltativa del progetto, non del pacchetto: serve solo a `gen icons`, che senza lo dice ed esce 1. `ICON_SPECS` si importa senza caricarlo, per il test che confronta le icone con il manifest del sito.
 
+## Preset di configurazione
+
+Le regole che valgono per tutti i progetti stanno nel pacchetto; il progetto estende e tiene solo le proprie eccezioni.
+
+```json
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  "extends": ["@elia97/officina/biome"]
+}
+```
+
+```yaml
+# lefthook.yml
+extends:
+  - node_modules/@elia97/officina/presets/lefthook.yml
+```
+
+## Action per i workflow
+
+I passi dei workflow stanno in `actions/` di questo repository, come composite action: girano dentro il job di chi le chiama, quindi il nome del check, l'`environment` e i segreti restano del progetto. Il riferimento va fissato a un tag di versione o a uno SHA, mai a `@main`.
+
+| Action | Passi | Cosa resta nel workflow del progetto |
+|---|---|---|
+| `actions/ci` | checkout, node, install, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
+| `actions/review` | `fallow review` sul diff contro il merge-base | il job informativo |
+| `actions/deploy` | risoluzione del tag, gate, `vercel pull`, `build`, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel nell'`env` del job, il job che controlla se i segreti ci sono |
+| `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: Elia97/officina/actions/deploy@v0.4.0
+        id: deploy
+        with:
+          ref: ${{ inputs.ref }}
+```
+
+Il pin `vercel@<major>` sta in un posto solo, `actions/deploy/action.yml`: lo guarda ogni lunedì `.github/workflows/vercel-cli.yml` di questo repository, con `officina check vercel-cli actions/deploy/action.yml`.
+
+## doctor
+
+`officina doctor` dice, in qualunque repository, cosa manca perché il progetto prenda tutto da fuori: i punti di aggancio dei generatori, gli script e le dipendenze di `package.json`, i residui di ciò che è uscito (copia del metodo, script, documenti commerciali), i preset, i workflow con il riferimento fissato, `officina.config.ts`. Sta dentro `ci`, quindi un progetto allineato non torna indietro senza che il gate lo dica.
+
 ## Sviluppo
 
 ```sh
@@ -91,7 +142,7 @@ pnpm publish     # prepublishOnly lancia typecheck, test e build
 
 `officina gen` avvolge plop con i generatori e i template del pacchetto, e scrive nel progetto da cui lo lanci: `section`, `page`, `component`, `collection`. `plop` e `ts-morph` sono dipendenze del pacchetto, non del progetto.
 
-I generatori scrivono codice che deve incastrarsi nello scaffold, quindi il progetto deve avere i punti di aggancio che si aspettano: i moduli che il codice generato importa e i file in cui iniettano. L'elenco è `src/lib/contract.ts`, e `officina doctor` dice, in qualunque repository, cosa manca. Finché manca qualcosa il pre-volo del generatore si ferma prima di scrivere un solo file.
+I generatori scrivono codice che deve incastrarsi nello scaffold, quindi il progetto deve avere i punti di aggancio che si aspettano: i moduli che il codice generato importa e i file in cui iniettano. L'elenco è `src/lib/contract.ts`, ed è la prima sezione di `officina doctor`. Finché manca qualcosa il pre-volo del generatore si ferma prima di scrivere un solo file.
 
 Un progetto aggiunge i propri generatori con un file `officina.generators.mjs` nella radice, con la firma di un plopfile: `export default function (plop)`.
 

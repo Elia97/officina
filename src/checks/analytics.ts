@@ -24,10 +24,10 @@ function reportCoverage(coverage: readonly Coverage[]): number {
 
   const missing = coverage.filter(({ covered }) => !covered)
   if (missing.length > 0) {
-    console.error(`\n✗ ${missing.length} event(s) the site pushes and no trigger listens for.`)
+    console.error(`\n✗ ${missing.length} evento/i che il sito emette e nessun trigger ascolta.`)
     return 1
   }
-  console.log('\n✓ Every event the site pushes has a trigger.')
+  console.log('\n✓ Ogni evento che il sito emette ha un trigger.')
   return 0
 }
 
@@ -35,7 +35,7 @@ export async function main(args: string[] = []): Promise<number> {
   const { analytics = {} } = await loadConfig(process.cwd())
   const gtmId = resolveGtmId(args)
   if (gtmId === null) {
-    console.log('No GTM container to check: pass one as an argument or set PUBLIC_GTM_ID.')
+    console.log('Nessun container GTM da controllare: passane uno come argomento o imposta PUBLIC_GTM_ID.')
     return 0
   }
 
@@ -43,7 +43,7 @@ export async function main(args: string[] = []): Promise<number> {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   })
   if (!response.ok) {
-    console.error(`✗ container ${gtmId} unreadable: HTTP ${response.status}`)
+    console.error(`✗ container ${gtmId} illeggibile: HTTP ${response.status}`)
     return 1
   }
 
@@ -51,7 +51,7 @@ export async function main(args: string[] = []): Promise<number> {
   const source = readFileSync(analytics.linkTracking ?? LINK_TRACKING, 'utf8')
   const coverage = coverageOf(extractLinkEvents(source), extractTriggers(container))
 
-  console.log(`\nGTM ${gtmId} — measurement IDs: ${googleTagIds(container).join(', ') || '—'}\n`)
+  console.log(`\nGTM ${gtmId} — ID di misurazione: ${googleTagIds(container).join(', ') || '—'}\n`)
   return reportCoverage(coverage)
 }
 

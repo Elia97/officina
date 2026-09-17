@@ -66,9 +66,9 @@ export async function checkPages(
     try {
       const response = await get(`${baseUrl}${path}`)
       const contentType = response.headers.get('content-type') ?? ''
-      if (response.status !== 200) results.push(fail(check, `expected 200, got ${response.status}`))
+      if (response.status !== 200) results.push(fail(check, `atteso 200, ricevuto ${response.status}`))
       else if (!contentType.includes(type))
-        results.push(fail(check, `expected a ${type} content-type, got "${contentType}"`))
+        results.push(fail(check, `atteso un content-type ${type}, ricevuto "${contentType}"`))
       else results.push(pass(check))
     } catch (error) {
       results.push(fail(check, messageOf(error)))
@@ -82,29 +82,29 @@ export async function checkSecurityHeaders({ get, baseUrl, securityHeaders }: Sm
   try {
     response = await get(baseUrl)
   } catch (error) {
-    return [fail('security headers', messageOf(error))]
+    return [fail('header di sicurezza', messageOf(error))]
   }
 
   const results = Object.entries(securityHeaders).map(([header, expected]) => {
     const check = `header ${header}`
     const value = response.headers.get(header)
-    if (value === null) return fail(check, 'missing')
-    if (expected !== null && value !== expected) return fail(check, `expected "${expected}", got "${value}"`)
+    if (value === null) return fail(check, 'assente')
+    if (expected !== null && value !== expected) return fail(check, `atteso "${expected}", ricevuto "${value}"`)
     return pass(check)
   })
 
   // Il noindex `has: host = *.vercel.app` di vercel.json applicato al dominio vero farebbe sparire il sito da ogni indice.
-  const check = 'no x-robots-tag on the production host'
+  const check = 'nessun x-robots-tag sull’host di produzione'
   const robots = response.headers.get('x-robots-tag')
-  results.push(robots === null ? pass(check) : fail(check, `present on ${baseUrl}: "${robots}"`))
+  results.push(robots === null ? pass(check) : fail(check, `presente su ${baseUrl}: "${robots}"`))
   return results
 }
 
 export async function checkBotIdChallenge({ get, baseUrl }: SmokeContext): Promise<CheckResult[]> {
-  const check = 'BotID challenge proxied same-origin'
+  const check = 'challenge di BotID servita dalla stessa origine'
   try {
     const response = await get(`${baseUrl}${BOTID_CHALLENGE}`)
-    if (response.status !== 200) return [fail(check, `expected 200 from the rewrite, got ${response.status}`)]
+    if (response.status !== 200) return [fail(check, `atteso 200 dal rewrite, ricevuto ${response.status}`)]
     return [pass(check)]
   } catch (error) {
     return [fail(check, messageOf(error))]
@@ -113,13 +113,13 @@ export async function checkBotIdChallenge({ get, baseUrl }: SmokeContext): Promi
 
 /** Il 308 da www all'apice, da vercel.json: dipende dal DNS e dal dominio del progetto Vercel, non dal deployment. */
 export async function checkCanonicalHost({ get, baseUrl, siteUrl }: SmokeContext): Promise<CheckResult[]> {
-  const check = 'www → apex 308'
-  if (baseUrl !== siteUrl) return [skip(check, `base URL is not ${siteUrl}`)]
+  const check = 'www → apice 308'
+  if (baseUrl !== siteUrl) return [skip(check, `l’URL di base non è ${siteUrl}`)]
   try {
     const response = await get(`https://www.${new URL(siteUrl).host}/`)
     const location = response.headers.get('location') ?? ''
-    if (response.status !== 308) return [fail(check, `expected 308, got ${response.status}`)]
-    if (!location.startsWith(siteUrl)) return [fail(check, `location "${location}" does not point at ${siteUrl}`)]
+    if (response.status !== 308) return [fail(check, `atteso 308, ricevuto ${response.status}`)]
+    if (!location.startsWith(siteUrl)) return [fail(check, `location "${location}" non punta a ${siteUrl}`)]
     return [pass(check)]
   } catch (error) {
     return [fail(check, messageOf(error))]
@@ -131,13 +131,13 @@ export async function checkTrailingSlash(
   pages: readonly VerifiedRoute[],
 ): Promise<CheckResult[]> {
   const page = pages.find(({ path, type }) => type === 'text/html' && path !== '/')
-  const check = 'trailing slash → 308'
-  if (page === undefined) return [skip(check, 'no HTML page other than / to probe')]
+  const check = 'barra finale → 308'
+  if (page === undefined) return [skip(check, 'nessuna pagina HTML oltre a / da sondare')]
   try {
     const response = await get(`${baseUrl}${page.path}/`)
-    if (response.status !== 308) return [fail(check, `expected 308 on ${page.path}/, got ${response.status}`)]
+    if (response.status !== 308) return [fail(check, `atteso 308 su ${page.path}/, ricevuto ${response.status}`)]
     const location = response.headers.get('location') ?? ''
-    if (!location.endsWith(page.path)) return [fail(check, `location "${location}" does not point at ${page.path}`)]
+    if (!location.endsWith(page.path)) return [fail(check, `location "${location}" non punta a ${page.path}`)]
     return [pass(check)]
   } catch (error) {
     return [fail(check, messageOf(error))]

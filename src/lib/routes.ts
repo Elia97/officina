@@ -88,17 +88,17 @@ export function expectedRoutes(pages: readonly PageFile[], pagesDir: string): Ex
 /** [HARD] Guardia fail-open: ogni asserzione per rotta itera sulle pagine emesse, quindi una dist vuota non asserisce niente. */
 export function missingRouteFailures(expected: Expectations, emitted: readonly string[], dist: string): string[] {
   if (emitted.length === 0) {
-    return [`${dist} holds no .html file — no route was measured, so the per-route budgets assert nothing`]
+    return [`${dist} non contiene nessun .html: nessuna rotta misurata, quindi i budget per rotta non affermano niente`]
   }
 
   const failures: string[] = []
   const routes = new Set(emitted)
   for (const { route, file } of expected.exact) {
-    if (!routes.has(route)) failures.push(`missing route ${route} — ${file} is prerendered but emitted no HTML`)
+    if (!routes.has(route)) failures.push(`rotta mancante ${route}: ${file} è prerenderizzata ma non ha emesso HTML`)
   }
   for (const { pattern, label, file } of expected.patterns) {
     if (emitted.some((route) => pattern.test(route))) continue
-    failures.push(`missing route ${label} — ${file} is prerendered but getStaticPaths emitted nothing`)
+    failures.push(`rotta mancante ${label}: ${file} è prerenderizzata ma getStaticPaths non ha emesso niente`)
   }
   return failures
 }

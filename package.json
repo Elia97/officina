@@ -1,6 +1,6 @@
 {
   "name": "@elia97/officina",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità, generatori e verifiche di build e di produzione.",
   "type": "module",
   "license": "MIT",
@@ -12,13 +12,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./biome": "./presets/biome.base.json"
   },
   "bin": {
     "officina": "dist/bin.js"
   },
   "files": [
     "dist",
+    "presets",
     "README.md"
   ],
   "engines": {

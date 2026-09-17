@@ -1,0 +1,41 @@
+name: officina lighthouse
+description: Lighthouse CI su una build equivalente alla produzione. Informativo — il job che chiama lo tiene `continue-on-error`.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: '.nvmrc'
+
+    - name: Abilita corepack
+      run: corepack enable
+      shell: bash
+
+    - name: Percorso dello store di pnpm
+      id: pnpm-store
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - uses: actions/cache@v6
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Installa le dipendenze
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Build (robots.txt equivalente alla produzione)
+      env:
+        VERCEL_ENV: production
+      run: pnpm build
+      shell: bash
+
+    - name: Lighthouse CI (autorun)
+      run: pnpm run lhci
+      shell: bash

@@ -25,9 +25,9 @@ detect_chrome() {
 }
 
 if ! CHROME_PATH="$(detect_chrome)"; then
-  echo "✗ no usable Linux Chrome/Chromium found." >&2
-  echo "  Install one with: pnpm dlx playwright@latest install chromium" >&2
-  echo "  Or point at the binary: CHROME_PATH=/path/to/chrome pnpm run lhci:local" >&2
+  echo "✗ nessun Chrome/Chromium per Linux utilizzabile." >&2
+  echo "  Installane uno con: pnpm dlx playwright@latest install chromium" >&2
+  echo "  Oppure indica il binario: CHROME_PATH=/percorso/di/chrome pnpm run lhci:local" >&2
   exit 1
 fi
 export CHROME_PATH
@@ -44,17 +44,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "→ production-equivalent build in ${OUT_DIR}"
+echo "→ build equivalente alla produzione in ${OUT_DIR}"
 VERCEL_ENV=production pnpm build --outDir "${OUT_DIR}"
 
 if ! grep -qx 'Allow: /' "${OUT_DIR}/client/robots.txt"; then
-  echo "✗ ${OUT_DIR}/client/robots.txt has no 'Allow: /' — the build is not production-equivalent." >&2
+  echo "✗ ${OUT_DIR}/client/robots.txt non ha 'Allow: /': la build non equivale alla produzione." >&2
   head -3 "${OUT_DIR}/client/robots.txt" >&2
   exit 1
 fi
 echo "✓ robots.txt: Allow: /"
 
-echo "→ starting the static server on :${PORT}"
+echo "→ avvio del server statico su :${PORT}"
 setsid pnpm dlx serve@14 "${OUT_DIR}/client" --listen "${PORT}" --no-clipboard >/dev/null 2>&1 &
 SERVER_PID=$!
 
@@ -63,11 +63,11 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 if ! curl -fs -o /dev/null "http://localhost:${PORT}/"; then
-  echo "✗ the server did not answer on :${PORT} within 60s." >&2
-  echo "  Retry on another port: LHCI_PORT=4400 pnpm run lhci:local" >&2
+  echo "✗ il server non ha risposto su :${PORT} entro 60s." >&2
+  echo "  Riprova su un’altra porta: LHCI_PORT=4400 pnpm run lhci:local" >&2
   exit 1
 fi
-echo "✓ server ready"
+echo "✓ server pronto"
 
 rm -rf "${REPORT_DIR}"
 
@@ -79,7 +79,7 @@ LH_CHROME_FLAGS='--no-sandbox --disable-dev-shm-usage' \
   node "${OFFICINA_BIN}" check lighthouse
 
 echo
-echo "→ score per URL (median over ${LHCI_RUNS:-1} run(s), the way LHCI asserts)"
+echo "→ punteggio per URL (mediana su ${LHCI_RUNS:-1} giro/i, come la calcola LHCI)"
 node -e '
 const fs = require("fs")
 const dir = process.argv[1]

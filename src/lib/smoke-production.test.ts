@@ -55,9 +55,9 @@ describe('checkPages', () => {
   })
 
   it.each([
-    [{ status: 404, headers: { 'content-type': 'text/html' } }, /expected 200, got 404/],
-    [{ headers: { 'content-type': 'application/json' } }, /expected a text\/html content-type/],
-    [{ headers: {} }, /got ""/],
+    [{ status: 404, headers: { 'content-type': 'text/html' } }, /atteso 200, ricevuto 404/],
+    [{ headers: { 'content-type': 'application/json' } }, /atteso un content-type text\/html/],
+    [{ headers: {} }, /ricevuto ""/],
   ])('fails the root page on %o', async (init, detail) => {
     const [root] = await checkPages(context(always(init)), PAGES)
 
@@ -97,7 +97,7 @@ describe('checkSecurityHeaders', () => {
 
     const results = await checkSecurityHeaders(context(always({ headers })))
 
-    expect(results).toContainEqual({ check: 'header referrer-policy', status: 'fail', detail: 'missing' })
+    expect(results).toContainEqual({ check: 'header referrer-policy', status: 'fail', detail: 'assente' })
   })
 
   it('fails a pinned header whose value drifted', async () => {
@@ -106,7 +106,7 @@ describe('checkSecurityHeaders', () => {
     const results = await checkSecurityHeaders(context(always({ headers })))
 
     expect(results).toContainEqual(
-      expect.objectContaining({ check: 'header x-frame-options', detail: 'expected "DENY", got "SAMEORIGIN"' }),
+      expect.objectContaining({ check: 'header x-frame-options', detail: 'atteso "DENY", ricevuto "SAMEORIGIN"' }),
     )
   })
 
@@ -121,6 +121,6 @@ describe('checkSecurityHeaders', () => {
   it('reports one failure, not six, when the request itself fails', async () => {
     const results = await checkSecurityHeaders(context(() => Promise.reject(new Error('ETIMEDOUT'))))
 
-    expect(results).toEqual([{ check: 'security headers', status: 'fail', detail: 'ETIMEDOUT' }])
+    expect(results).toEqual([{ check: 'header di sicurezza', status: 'fail', detail: 'ETIMEDOUT' }])
   })
 })

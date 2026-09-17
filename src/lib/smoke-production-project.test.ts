@@ -25,7 +25,7 @@ describe('gli header dichiarati dal progetto', () => {
 
     expect(results.map(({ check, status }) => `${check}: ${status}`)).toEqual([
       'header x-frame-options: pass',
-      'no x-robots-tag on the production host: pass',
+      'nessun x-robots-tag sull’host di produzione: pass',
     ])
   })
 })

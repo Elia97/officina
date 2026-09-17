@@ -81,13 +81,13 @@ describe('missingRouteFailures', () => {
 
   it('reports a prerendered page that emitted nothing', () => {
     expect(missingRouteFailures(expected, ['/'], 'dist/client')).toEqual([
-      expect.stringContaining('missing route /blog/[slug]'),
+      expect.stringContaining('rotta mancante /blog/[slug]'),
     ])
   })
 
   // [HARD] Fail-open: ogni altra asserzione itera sulle pagine emesse.
   it('refuses to pass on an empty dist', () => {
-    expect(missingRouteFailures(expected, [], 'dist/client')).toEqual([expect.stringContaining('no .html file')])
+    expect(missingRouteFailures(expected, [], 'dist/client')).toEqual([expect.stringContaining('nessun .html')])
   })
 })
 

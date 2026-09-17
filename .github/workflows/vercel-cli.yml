@@ -1,0 +1,32 @@
+name: Pin della CLI di Vercel
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 1' # Lunedì 05:00 UTC, solo sul branch di default
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  pin:
+    name: La major del pin contro npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      # Il pin di tutti i progetti sta in un file solo: l'action di deploy.
+      - run: node src/bin.ts check vercel-cli actions/deploy/action.yml

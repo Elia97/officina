@@ -28,7 +28,7 @@ export function main(args: string[] = []): number {
   const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR))
   const resolved = lighthouseConfig(rc, routes, process.env)
 
-  console.log(`\nLighthouse CI — ${routes.length} route(s) derived from ${PAGES_DIR}\n`)
+  console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}\n`)
   for (const url of resolved.ci.collect.url ?? []) console.log(`  ${url}`)
   console.log()
 

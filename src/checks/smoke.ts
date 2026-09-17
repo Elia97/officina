@@ -18,16 +18,16 @@ const PAGES_DIR = 'src/pages'
 function printResults(results: readonly CheckResult[]): void {
   for (const { check, status, detail } of results) {
     if (status === 'pass') console.log(`✓ ${check}`)
-    else if (status === 'skip') console.log(`- ${check} (skipped: ${detail})`)
+    else if (status === 'skip') console.log(`- ${check} (saltato: ${detail})`)
     else console.error(`✗ ${check} — ${detail}`)
   }
 }
 
 function printFailures(failures: readonly CheckResult[]): void {
-  console.error(`\n✗ ${failures.length} check(s) failed:`)
+  console.error(`\n✗ ${failures.length} controllo/i falliti:`)
   console.error(`${failures.map(({ check, detail }) => `  - ${check} — ${detail}`).join('\n')}\n`)
-  console.error('Production is live and broken. Roll back from the Vercel dashboard:')
-  console.error('Deployments → the last known-good production deployment → Promote to Production.\n')
+  console.error('La produzione è online e rotta. Torna indietro dalla dashboard di Vercel:')
+  console.error('Deployments → l’ultimo deployment di produzione sano → Promote to Production.\n')
 }
 
 export async function main(args: string[] = []): Promise<number> {
@@ -36,12 +36,12 @@ export async function main(args: string[] = []): Promise<number> {
 
   if (siteUrl === undefined) {
     console.error(
-      '\n✗ officina.config.ts declares no siteUrl — the canonical-host check has nothing to compare against.\n',
+      '\n✗ officina.config.ts non dichiara siteUrl: il controllo dell’host canonico non ha con cosa confrontarsi.\n',
     )
     return 1
   }
   if (url === undefined && new URL(siteUrl).host === 'example.com') {
-    console.error('\n✗ siteUrl is still the template placeholder — pass a URL: pnpm smoke:prod https://…\n')
+    console.error('\n✗ siteUrl è ancora il segnaposto del template: passa un URL, pnpm smoke:prod https://…\n')
     return 1
   }
 
@@ -55,7 +55,7 @@ export async function main(args: string[] = []): Promise<number> {
   }
   const pages = smokeRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), smoke.nonHtmlRoutes)
 
-  console.log(`\nProduction smoke — ${baseUrl}\n`)
+  console.log(`\nSmoke di produzione — ${baseUrl}\n`)
 
   await waitForAlias(context, (ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   const results = await runChecks(context, pages, smoke.checks)
@@ -66,7 +66,7 @@ export async function main(args: string[] = []): Promise<number> {
     printFailures(failures)
     return 1
   }
-  console.log(`\n✓ Every check passed on ${baseUrl}.\n`)
+  console.log(`\n✓ Tutti i controlli passati su ${baseUrl}.\n`)
   return 0
 }
 

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { defineConfig, loadConfig } from './config.ts'
+import { defineConfig, findConfigFile, loadConfig } from './config.ts'
 
 const roots: string[] = []
 
@@ -36,6 +36,15 @@ describe('loadConfig', () => {
     const root = projectWith('officina.config.mjs', 'export const unused = 1\n')
 
     expect(await loadConfig(root)).toEqual({})
+  })
+})
+
+describe('findConfigFile', () => {
+  it('dice quale file del progetto verrà caricato, o che non ce n’è nessuno', () => {
+    const root = projectWith('officina.config.mjs', 'export default {}\n')
+
+    expect(findConfigFile(root)).toBe(join(root, 'officina.config.mjs'))
+    expect(findConfigFile(join(root, 'altrove'))).toBeUndefined()
   })
 })
 

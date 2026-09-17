@@ -24,8 +24,11 @@ const CONFIG_FILES: readonly string[] = ['officina.config.ts', 'officina.config.
 export const defineConfig = (config: OfficinaConfig): OfficinaConfig => config
 
 // Fuori da node_modules Node toglie i tipi da solo: il file del progetto può essere TypeScript.
+export const findConfigFile = (root: string): string | undefined =>
+  CONFIG_FILES.map((name) => join(root, name)).find((path) => existsSync(path))
+
 export async function loadConfig(root: string): Promise<OfficinaConfig> {
-  const file = CONFIG_FILES.map((name) => join(root, name)).find((path) => existsSync(path))
+  const file = findConfigFile(root)
   if (file === undefined) return {}
   const module: { default?: OfficinaConfig } = await import(pathToFileURL(file).href)
   return module.default ?? {}
