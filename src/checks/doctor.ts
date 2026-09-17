@@ -2,7 +2,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-
 import {
   configGaps,
   dependencyGaps,
@@ -13,6 +12,7 @@ import {
   scriptGaps,
   workflowGaps,
 } from '../lib/alignment.ts'
+import { anchorGaps } from '../lib/anchors.ts'
 import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts'
 import { findConfigFile, loadConfig, type OfficinaConfig } from '../lib/config.ts'
 import { type ContractGap, contractGaps } from '../lib/contract.ts'
@@ -41,6 +41,7 @@ export async function main(): Promise<number> {
 
   const sections: [title: string, gaps: ContractGap[]][] = [
     ['punti di aggancio dei generatori', contractGaps(root)],
+    ['ancoraggi delle pagine a sezioni e dei dizionari', anchorGaps(root)],
     ['script e dipendenze di package.json', [...scriptGaps(manifest), ...dependencyGaps(manifest)]],
     ['residui di ciò che è uscito dal repository', leftoverGaps(files)],
     ['preset di configurazione', presetGaps(files)],

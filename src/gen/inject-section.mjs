@@ -3,14 +3,13 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { Node, Project, SyntaxKind } from 'ts-morph'
 
+import { failing } from './hook-points.mjs'
 import { findSectionedPages, sectionFiles, sectionTargets } from './section-targets.mjs'
 import { isNameTaken } from './ts-morph-utils.mjs'
 
 const GUIDE = 'docs/guides/content-collections.md'
 
-function fail(where, problem) {
-  throw new Error(`gen:section injection failed in ${where}: ${problem} (contract: ${GUIDE})`)
-}
+const fail = failing('gen:section injection failed', GUIDE)
 
 function addSource(project, root, path, missing) {
   if (!existsSync(`${root}/${path}`)) fail(path, missing)
@@ -100,25 +99,31 @@ function assertContextForwardable(fn, targets) {
   }
 }
 
-export function assertSectionInjectable({ root, collection, camel, kebab, pascal, image = false }) {
+// Gli ancoraggi di una collection a sezioni, senza sapere che sezione stia per nascere: il pre-volo
+// ci aggiunge i controlli sul nome nuovo, `doctor` li guarda e basta.
+export function assertSectionAnchors({ root, collection, project = new Project() }) {
   const targets = sectionTargets(collection)
-  const project = new Project()
   const { barrel, fn, union } = locateUnionArray(project, root, targets, collection.kebab)
+  assertContextForwardable(fn, targets)
+  const obj = locateReturnObject(project, root, targets, collection.kebab)
+  const { page, src } = readSectionedPage(root, targets)
+  return { targets, barrel, fn, union, obj, page, src }
+}
+
+export function assertSectionInjectable({ root, collection, camel, kebab, pascal }) {
+  const { targets, barrel, union, obj, page, src } = assertSectionAnchors({ root, collection })
   if (inUnion(union, camel)) {
     fail(targets.barrel, `section "${camel}" is already in the union — pick another name`)
   }
-  if (image) assertContextForwardable(fn, targets)
   if (isNameTaken(barrel, `${camel}SectionSchema`)) {
     fail(
       targets.barrel,
       `the identifier \`${camel}SectionSchema\` is already taken — the injected import would collide. Pick another name`,
     )
   }
-  const obj = locateReturnObject(project, root, targets, collection.kebab)
   if (obj.getProperty(camel)) {
     fail(targets.dataLayer, `section "${camel}" is already picked in ${targets.dataFunction}`)
   }
-  const { page, src } = readSectionedPage(root, targets)
   const frontmatter = src.split('---')[1] ?? ''
   if (new RegExp(`\\b${pascal}\\b`).test(frontmatter)) {
     fail(
@@ -144,10 +149,9 @@ function contextArgument(barrel, fn) {
 }
 
 export function injectSection({ root, collection, camel, kebab, pascal, image = false }) {
-  const targets = sectionTargets(collection)
   const project = new Project()
+  const { targets, barrel, fn, union, obj, page, src: original } = assertSectionAnchors({ root, collection, project })
 
-  const { barrel, fn, union } = locateUnionArray(project, root, targets, collection.kebab)
   if (!barrel.getImportDeclaration((d) => d.getModuleSpecifierValue() === `./${kebab}`)) {
     barrel.addImportDeclaration({
       moduleSpecifier: `./${kebab}`,
@@ -157,15 +161,12 @@ export function injectSection({ root, collection, camel, kebab, pascal, image = 
   if (!inUnion(union, camel)) {
     union.addElement(`${camel}SectionSchema(${image ? contextArgument(barrel, fn) : ''})`)
   }
-
-  const obj = locateReturnObject(project, root, targets, collection.kebab)
   if (!obj.getProperty(camel)) {
     obj.addPropertyAssignment({ name: camel, initializer: `pick('${camel}')` })
   }
 
   project.saveSync()
 
-  const { page, src: original } = readSectionedPage(root, targets)
   let src = original
   const imp = `import ${pascal} from '@/components/${collection.kebab}/${kebab}.astro'`
   if (!src.includes(imp)) {

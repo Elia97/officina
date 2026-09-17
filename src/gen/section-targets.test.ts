@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { findSectionedPages, sectionFiles, sectionTargets } from './section-targets.mjs'
+import { findSectionedPages, sectionedCollections, sectionFiles, sectionTargets } from './section-targets.mjs'
 import { cleanupRoots, makeRoot } from './test-helpers/gen-fixture.ts'
 
 const HOMEPAGE = { camel: 'homepage', kebab: 'homepage', pascal: 'Homepage' }
@@ -59,5 +59,39 @@ describe('findSectionedPages', () => {
     const root = makeRoot({ 'src/pages/team.astro': ABOUT_US_MARKER, 'src/pages/about.astro': ABOUT_US_MARKER })
 
     expect(findSectionedPages(root, ABOUT_US_MARKER)).toEqual(['src/pages/about.astro', 'src/pages/team.astro'])
+  })
+})
+
+describe('sectionedCollections', () => {
+  const config = (...lines: string[]) => ({
+    'src/content.config.ts': [...lines, 'export const collections = {}'].join('\n'),
+  })
+
+  it('trova la homepage dal content.config.ts del progetto di prova', () => {
+    expect(sectionedCollections(makeRoot())).toEqual([HOMEPAGE])
+  })
+
+  it('ricava kebab dal percorso e camel dal nome importato, e ne deriva il pascal', () => {
+    const root = makeRoot(config("import { aboutUsCollectionSchema } from '@/lib/schemas/about-us'"))
+
+    expect(sectionedCollections(root)).toEqual([ABOUT_US])
+  })
+
+  it('lascia fuori lo schema di una collection piatta, che non ha sezioni', () => {
+    const root = makeRoot(config("import { servicesSchema } from '@/lib/schemas/services'"))
+
+    expect(sectionedCollections(root)).toEqual([])
+  })
+
+  it('lascia fuori quello che non arriva da @/lib/schemas', () => {
+    const root = makeRoot(config("import { blogCollectionSchema } from '@/content/blog'"))
+
+    expect(sectionedCollections(root)).toEqual([])
+  })
+
+  it('lascia fuori un import che si chiama solo CollectionSchema, che non nomina nessuna collection', () => {
+    const root = makeRoot(config("import { CollectionSchema } from '@/lib/schemas/homepage'"))
+
+    expect(sectionedCollections(root)).toEqual([])
   })
 })

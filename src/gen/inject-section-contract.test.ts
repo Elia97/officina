@@ -13,7 +13,7 @@ const page = (frontmatter = '') =>
   `---\n${frontmatter}\n// @gen:homepage-imports\n---\n{/* @gen:homepage-sections */}\n`
 
 const assertOn =
-  (overrides: Record<string, string | null> = {}, name = 'features', image = false, collection = HOMEPAGE) =>
+  (overrides: Record<string, string | null> = {}, name = 'features', collection = HOMEPAGE) =>
   () =>
     assertSectionInjectable({
       root: makeRoot(overrides),
@@ -21,7 +21,6 @@ const assertOn =
       camel: name,
       kebab: name,
       pascal: `${name[0]?.toUpperCase()}${name.slice(1)}`,
-      image,
     })
 
 afterEach(cleanupRoots)
@@ -49,12 +48,12 @@ describe('hook points in the schema barrel', () => {
 
 describe('la collection scelta', () => {
   it('rifiuta una collection senza barrel, che nasce da gen:collection', () => {
-    expect(assertOn({}, 'team', false, ABOUT)).toThrow(/"about" collection has no schema barrel/)
+    expect(assertOn({}, 'team', ABOUT)).toThrow(/"about" collection has no schema barrel/)
   })
 
   it('rifiuta una collection con il barrel ma senza strato dati', () => {
     const barrel = "export function aboutCollectionSchema() { return z.discriminatedUnion('section', []) }"
-    expect(assertOn({ 'src/lib/schemas/about/index.ts': barrel }, 'team', false, ABOUT)).toThrow(/has no data layer/)
+    expect(assertOn({ 'src/lib/schemas/about/index.ts': barrel }, 'team', ABOUT)).toThrow(/has no data layer/)
   })
 
   it('rifiuta quando più pagine portano il marcatore delle sezioni', () => {
@@ -62,19 +61,19 @@ describe('la collection scelta', () => {
   })
 })
 
-describe("una sezione con l'immagine", () => {
+describe('il contesto che una sezione con immagine riceve', () => {
   it('accetta il barrel vero, che dà un nome al contesto', () => {
-    expect(assertOn({}, 'gallery', true)).not.toThrow()
+    expect(assertOn({}, 'gallery')).not.toThrow()
   })
 
   it('accetta un barrel senza parametro, che il generatore completa', () => {
     const src = "export function homepageCollectionSchema() { return z.discriminatedUnion('section', []) }"
-    expect(assertOn({ [BARREL]: src }, 'gallery', true)).not.toThrow()
+    expect(assertOn({ [BARREL]: src }, 'gallery')).not.toThrow()
   })
 
-  it('rifiuta un barrel che destruttura il contesto, perché non ha un nome da passare alla sezione', () => {
+  it('rifiuta un barrel che destruttura il contesto, anche per una sezione senza immagine', () => {
     const src = "export function homepageCollectionSchema({ image }) { return z.discriminatedUnion('section', []) }"
-    expect(assertOn({ [BARREL]: src }, 'gallery', true)).toThrow(/destructures its parameter/)
+    expect(assertOn({ [BARREL]: src })).toThrow(/destructures its parameter/)
   })
 })
 

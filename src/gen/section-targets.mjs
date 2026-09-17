@@ -1,7 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { Project } from 'ts-morph'
 
 import { isValidIdentifier } from './identifier.mjs'
+
+const CONFIG_PATH = 'src/content.config.ts'
+const SCHEMAS = /^@\/lib\/schemas\/(.+)$/
+const COLLECTION_SCHEMA = 'CollectionSchema'
 
 export function casings(plop, value) {
   return {
@@ -30,6 +35,23 @@ export const sectionFiles = (targets, kebab) => [
   `${targets.contentDir}/${kebab}.yml`,
   `${targets.componentDir}/${kebab}.astro`,
 ]
+
+// Le collection a sezioni si riconoscono dall'import che `gen:collection` scrive in
+// content.config.ts, non dai marcatori nelle pagine: quelli sono proprio ciò che può sparire.
+export function sectionedCollections(root) {
+  const config = new Project().addSourceFileAtPath(join(root, CONFIG_PATH))
+  return config.getImportDeclarations().flatMap((declaration) => {
+    const kebab = SCHEMAS.exec(declaration.getModuleSpecifierValue())?.[1]
+    if (kebab === undefined) return []
+    return declaration.getNamedImports().flatMap((named) => {
+      const name = named.getName()
+      if (!name.endsWith(COLLECTION_SCHEMA)) return []
+      const camel = name.slice(0, -COLLECTION_SCHEMA.length)
+      if (camel === '') return []
+      return [{ camel, kebab, pascal: `${camel[0].toUpperCase()}${camel.slice(1)}` }]
+    })
+  })
+}
 
 export function findSectionedPages(root, marker) {
   return readdirSync(join(root, 'src/pages'), { recursive: true, withFileTypes: true })
