@@ -3,7 +3,7 @@
 
   // Ogni comando lo carica bin.ts con un import dinamico, che fallow non traccia, e il plopfile
   // lo carica plop. Esportano tutti `main` di proposito, è il contratto che bin.ts chiama.
-  "entry": ["src/checks/*.ts", "src/gen/run.ts", "src/gen/plopfile.mjs"],
+  "entry": ["src/index.ts", "src/checks/*.ts", "src/gen/run.ts", "src/gen/icons.ts", "src/gen/plopfile.mjs"],
   // Dati di prova letti dal disco dai test, non codice del pacchetto.
   "ignorePatterns": ["test/fixture-project/**"]
 }

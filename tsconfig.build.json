@@ -4,9 +4,15 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": false,
+    "declaration": true,
     "sourceMap": false
   },
   "include": ["src/**/*.ts", "src/**/*.mjs"],
-  "exclude": ["src/**/*.test.ts", "src/test-setup.ts", "src/test-fixture.ts", "src/gen/test-helpers/**"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/test-setup.ts",
+    "src/test-fixture.ts",
+    "src/gen/test-helpers/**",
+    "src/lib/test-helpers/**"
+  ]
 }

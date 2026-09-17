@@ -5,28 +5,38 @@ type Main = (args?: string[]) => number | Promise<number>
 type Loader = () => Promise<{ main: Main }>
 
 // Un modulo per gate, caricato solo quando serve: `officina check routes` non paga il costo
-// degli altri cinque.
+// degli altri.
 export const CHECKS: Record<string, Loader> = {
+  analytics: () => import('./checks/analytics.ts'),
+  bundle: () => import('./checks/bundle.ts'),
   comments: () => import('./checks/comments.ts'),
   language: () => import('./checks/language.ts'),
+  lighthouse: () => import('./checks/lighthouse.ts'),
   placeholders: () => import('./checks/placeholders.ts'),
   roadmap: () => import('./checks/roadmap.ts'),
   routes: () => import('./checks/routes.ts'),
+  smoke: () => import('./checks/smoke.ts'),
   'vercel-cli': () => import('./checks/vercel-cli.ts'),
 }
 
 const USAGE = `Uso:
   officina check <gate> [opzioni]   gate: ${Object.keys(CHECKS).join(', ')}
   officina gen [generatore]         section, page, component, collection, più quelli del progetto
+  officina gen icons                le icone del manifest da public/favicon.svg
   officina doctor                   cosa manca al progetto perché i generatori funzionino
 
-Opzioni dei gate: --diff, --base <ref>, --head <ref>, --strict, --format text|github
+Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
+bundle legge dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
+I valori del progetto (URL, budget, header, controlli propri) stanno in officina.config.ts
 `
 
 // Ogni gruppo dice quale modulo carica e quali argomenti gli passa.
 const GROUPS: Record<string, (args: string[]) => { load: Loader | undefined; args: string[] }> = {
   check: ([name = '', ...rest]) => ({ load: CHECKS[name], args: rest }),
-  gen: (args) => ({ load: () => import('./gen/run.ts'), args }),
+  gen: (args) =>
+    args[0] === 'icons'
+      ? { load: () => import('./gen/icons.ts'), args: args.slice(1) }
+      : { load: () => import('./gen/run.ts'), args },
   doctor: (args) => ({ load: () => import('./checks/doctor.ts'), args }),
 }
 

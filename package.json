@@ -1,12 +1,18 @@
 {
   "name": "@elia97/officina",
-  "version": "0.2.0",
-  "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità e, più avanti, generatori.",
+  "version": "0.3.0",
+  "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità, generatori e verifiche di build e di produzione.",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Elia97/officina.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "bin": {
     "officina": "dist/bin.js"
@@ -23,7 +29,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -r src/gen/templates dist/gen/templates",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp -r src/gen/templates dist/gen/templates && cp -r src/sh dist/sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "format": "biome check --write .",
@@ -43,5 +49,13 @@
   "dependencies": {
     "plop": "^4.0.5",
     "ts-morph": "^28.0.0"
+  },
+  "peerDependencies": {
+    "sharp": ">=0.34.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
   }
 }
