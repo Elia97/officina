@@ -1,0 +1,11 @@
+{
+  "name": "fixture-project",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "biome check --write ."
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1"
+  }
+}

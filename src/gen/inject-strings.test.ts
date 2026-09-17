@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { assertStringsInjectable, injectStrings } from './inject-strings.mjs'
+import { assertDictionaries, assertStringsInjectable, injectStrings } from './inject-strings.mjs'
 import { cleanupRoots, makeRoot, read } from './test-helpers/gen-fixture.ts'
 
 const IT = 'src/i18n/strings/it.ts'
@@ -36,6 +36,26 @@ describe('il contratto dei dizionari', () => {
     const en = "export const en = { 'page.aboutUs.title': 'About us' } as const\n"
 
     expect(assertOn({ [EN]: en })).toThrow(/already there/)
+  })
+})
+
+describe('assertDictionaries', () => {
+  it('guarda la forma dei dizionari senza sapere quali chiavi arriveranno', () => {
+    expect(() => assertDictionaries({ root: makeRoot() })).not.toThrow()
+  })
+
+  it('si ferma sulla stessa cosa del pre-volo, la costante che non è un letterale as const', () => {
+    const root = makeRoot({ [IT]: 'export const it = {}\n' })
+
+    expect(() => assertDictionaries({ root })).toThrow(/not an object literal/)
+  })
+
+  it('non guarda le chiavi: una che il pre-volo rifiuterebbe qui passa', () => {
+    const it = "export const it = { 'page.aboutUs.title': 'Chi siamo' } as const\n"
+    const root = makeRoot({ [IT]: it })
+
+    expect(() => assertDictionaries({ root })).not.toThrow()
+    expect(() => assertStringsInjectable({ root, keys: KEYS })).toThrow(/already there/)
   })
 })
 

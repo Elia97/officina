@@ -2,12 +2,12 @@ import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { Project, SyntaxKind } from 'ts-morph'
 
+import { failing } from './hook-points.mjs'
+
 const DICTIONARIES = 'src/i18n/strings'
 const GUIDE = 'docs/guides/content-collections.md'
 
-function fail(where, problem) {
-  throw new Error(`gen:page injection failed in ${where}: ${problem} (contract: ${GUIDE})`)
-}
+const fail = failing('gen:page injection failed', GUIDE)
 
 function locateObject(file, path, locale) {
   const declaration = file.getVariableDeclaration(locale)
@@ -39,6 +39,12 @@ function loadDictionaries(root) {
     return { path, object: locateObject(file, path, name.slice(0, -3)) }
   })
   return { project, dictionaries }
+}
+
+// La forma dei dizionari, senza sapere quali chiavi stiano per arrivare: il pre-volo ci aggiunge
+// il controllo sulle chiavi nuove, `doctor` la guarda e basta.
+export function assertDictionaries({ root }) {
+  loadDictionaries(root)
 }
 
 export function assertStringsInjectable({ root, keys }) {

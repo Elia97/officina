@@ -118,7 +118,14 @@ Il pin `vercel@<major>` sta in un posto solo, `actions/deploy/action.yml`: lo gu
 
 ## doctor
 
-`officina doctor` dice, in qualunque repository, cosa manca perché il progetto prenda tutto da fuori: i punti di aggancio dei generatori, gli script e le dipendenze di `package.json`, i residui di ciò che è uscito (copia del metodo, script, documenti commerciali), i preset, i workflow con il riferimento fissato, `officina.config.ts`. Sta dentro `ci`, quindi un progetto allineato non torna indietro senza che il gate lo dica.
+`officina doctor` dice, in qualunque repository, cosa manca perché il progetto prenda tutto da fuori: i punti di aggancio dei generatori, gli ancoraggi delle pagine a sezioni e dei dizionari, gli script e le dipendenze di `package.json`, i residui di ciò che è uscito (copia del metodo, script, documenti commerciali), i preset, i workflow con il riferimento fissato, `officina.config.ts`. Sta dentro `ci`, quindi un progetto allineato non torna indietro senza che il gate lo dica.
+
+Le prime due sezioni rispondono a due domande diverse. I punti di aggancio sono l'elenco di `src/lib/contract.ts`, e chiedono che una cosa esista: i moduli che il codice generato importa, le cartelle in cui i generatori scrivono, `class-variance-authority` fra le dipendenze, lo script `check` che il post-gen lancia. Gli ancoraggi guardano dentro quei file, e chiedono che abbiano ancora la forma su cui l'iniezione conta:
+
+- per ogni collection a sezioni registrata in `src/content.config.ts` — riconosciuta dall'import di `<nome>CollectionSchema` da `@/lib/schemas/<nome>`, non dai marcatori, che sono proprio ciò che può sparire — la funzione `<nome>CollectionSchema`, la sua `z.discriminatedUnion` sopra un array letterale, il parametro non destrutturato che una sezione con immagine riceve, il `return { … }` di primo livello di `get<Nome>Sections`, e una sola pagina sotto `src/pages/` che porti `{/* @gen:<nome>-sections */}` e, su quella, `// @gen:<nome>-imports`;
+- per ogni dizionario di `src/i18n/strings/`, il suo `export const <lingua> = { … } as const`.
+
+Sono gli stessi controlli del pre-volo dei generatori, non una copia: `doctor` chiama `assertSectionAnchors` e `assertDictionaries`, che vivono in `src/gen/` insieme all'iniezione. Al pre-volo resta ciò che dipende dal nome di quello che sta per nascere — la sezione già nell'unione, l'identificatore già preso nel barrel o nel frontmatter, la chiave già nel dizionario, il file che esiste già — e che quindi si può chiedere solo al lancio del generatore.
 
 ## Sviluppo
 
@@ -142,7 +149,7 @@ pnpm publish     # prepublishOnly lancia typecheck, test e build
 
 `officina gen` avvolge plop con i generatori e i template del pacchetto, e scrive nel progetto da cui lo lanci: `section`, `page`, `component`, `collection`. `plop` e `ts-morph` sono dipendenze del pacchetto, non del progetto.
 
-I generatori scrivono codice che deve incastrarsi nello scaffold, quindi il progetto deve avere i punti di aggancio che si aspettano: i moduli che il codice generato importa e i file in cui iniettano. L'elenco è `src/lib/contract.ts`, ed è la prima sezione di `officina doctor`. Finché manca qualcosa il pre-volo del generatore si ferma prima di scrivere un solo file.
+I generatori scrivono codice che deve incastrarsi nello scaffold, quindi il progetto deve avere i punti di aggancio che si aspettano: i moduli che il codice generato importa, l'elenco è `src/lib/contract.ts`, e i file in cui iniettano, con la forma su cui l'iniezione conta. Sono le prime due sezioni di `officina doctor`. Finché manca qualcosa il pre-volo del generatore si ferma prima di scrivere un solo file.
 
 Un progetto aggiunge i propri generatori con un file `officina.generators.mjs` nella radice, con la firma di un plopfile: `export default function (plop)`.
 
