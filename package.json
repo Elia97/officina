@@ -1,6 +1,6 @@
 {
   "name": "@elia97/officina",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Gli strumenti dei progetti nati dai template di Elia: gate di qualità, generatori e verifiche di build e di produzione.",
   "type": "module",
   "license": "MIT",
