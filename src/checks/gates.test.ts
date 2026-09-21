@@ -37,6 +37,16 @@ const captureOutput = <T>(fn: () => T): { exitCode: T; lines: string[] } => {
   }
 }
 
+const withBrokenFileAsync = async <T>(name: string, content: string, fn: () => Promise<T>): Promise<T> => {
+  const path = join(ROOT, 'scripts', name)
+  writeFileSync(path, content)
+  try {
+    return await fn()
+  } finally {
+    rmSync(path, { force: true })
+  }
+}
+
 // I gate che leggono officina.config.ts sono asincroni: la spia va tolta dopo, non appena la
 // promessa esiste, altrimenti l'output esce dopo che nessuno lo sta più ascoltando.
 const captureAsync = async <T>(fn: () => Promise<T>): Promise<{ exitCode: T; lines: string[] }> => {
@@ -160,19 +170,19 @@ describe('check:roadmap', () => {
 })
 
 describe('check:placeholders', () => {
-  it('sul template esce 1 e nomina i file che portano segnaposto', () => {
-    const { exitCode, lines } = captureOutput(() => checkPlaceholders([]))
+  it('sul template esce 1 e nomina i file che portano segnaposto', async () => {
+    const { exitCode, lines } = await captureAsync(() => checkPlaceholders([]))
 
     expect(exitCode).toBe(1)
     expect(lines.join('\n')).toContain('src/lib/company.ts')
     expect(lines.join('\n')).toContain('src/i18n/strings/it.ts')
   })
 
-  it("con --env nomina la chiave che manca nell'ambiente scaricato", () => {
-    const { exitCode, lines } = withBrokenFile(
+  it("con --env nomina la chiave che manca nell'ambiente scaricato", async () => {
+    const { exitCode, lines } = await withBrokenFileAsync(
       '__test-env.local',
       'CONTACT_FROM_EMAIL="hello@acme.test"\nCONTACT_FROM_NAME="Acme"\n',
-      () => captureOutput(() => checkPlaceholders(['--env', 'scripts/__test-env.local'])),
+      () => captureAsync(() => checkPlaceholders(['--env', 'scripts/__test-env.local'])),
     )
 
     expect(exitCode).toBe(1)

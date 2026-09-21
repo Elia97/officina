@@ -1,13 +1,35 @@
 import { describe, expect, it } from 'vitest'
 
 import { useFixtureProject } from '../test-fixture.ts'
-import { envFindings, placeholderSources, sourceFindings } from './check-placeholders.ts'
+import { contactEnvKeys, envFindings, placeholderSources, sourceFindings } from './check-placeholders.ts'
 
 useFixtureProject()
+
+const DEFAULT_KEYS = contactEnvKeys()
 
 describe('placeholderSources', () => {
   it('guarda site.ts, company.ts e ogni dizionario registrato', () => {
     expect(placeholderSources()).toEqual(['src/lib/site.ts', 'src/lib/company.ts', 'src/i18n/strings/it.ts'])
+  })
+
+  it('con sources dichiarato guarda quella lista e nessun altro file, dizionari compresi', () => {
+    expect(placeholderSources({ placeholders: { sources: ['src/lib/site.ts'] } })).toEqual(['src/lib/site.ts'])
+  })
+
+  it('con sources vuoto non guarda niente: il progetto lo ha dichiarato', () => {
+    expect(placeholderSources({ placeholders: { sources: [] } })).toEqual([])
+  })
+})
+
+describe('contactEnvKeys', () => {
+  it('senza dichiarazione sono le tre del template', () => {
+    expect(contactEnvKeys({})).toEqual(['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME', 'CONTACT_TO_EMAIL'])
+  })
+
+  it('dichiarate, sostituiscono la lista del pacchetto', () => {
+    const keys = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME']
+
+    expect(contactEnvKeys({ placeholders: { contactEnvKeys: keys } })).toEqual(keys)
   })
 })
 
@@ -58,17 +80,17 @@ describe('envFindings', () => {
   ].join('\n')
 
   it('passa con le tre chiavi impostate su valori veri', () => {
-    expect(envFindings(complete)).toEqual([])
+    expect(envFindings(complete, DEFAULT_KEYS)).toEqual([])
   })
 
   it('segnala una chiave assente, che ricade sul default di astro.config.mjs', () => {
-    expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''))).toEqual([
+    expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''), DEFAULT_KEYS)).toEqual([
       { message: 'CONTACT_TO_EMAIL non è impostata: vale il default di astro.config.mjs' },
     ])
   })
 
   it('segnala una chiave vuota con la sua riga', () => {
-    expect(envFindings(complete.replace('"Acme"', '""'))).toEqual([
+    expect(envFindings(complete.replace('"Acme"', '""'), DEFAULT_KEYS)).toEqual([
       { line: 2, message: 'CONTACT_FROM_NAME non è impostata: vale il default di astro.config.mjs' },
     ])
   })
@@ -81,6 +103,12 @@ describe('envFindings', () => {
       { line: 3, message: 'CONTACT_TO_EMAIL porta un segnaposto del template' },
     ],
   ])('segnala il segnaposto %s → %s senza stamparne il valore', (from, to, finding) => {
-    expect(envFindings(complete.replace(from, to))).toEqual([finding])
+    expect(envFindings(complete.replace(from, to), DEFAULT_KEYS)).toEqual([finding])
+  })
+
+  it('non pretende una chiave che il progetto non ha dichiarato', () => {
+    const keys = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME']
+
+    expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''), keys)).toEqual([])
   })
 })
