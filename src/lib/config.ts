@@ -10,6 +10,8 @@ import { aFunction, aNumber, anArrayOf, aRecordOf, aShape, aString, aStringOrNul
 /** `'required'` fa fallire il gate quando ciò che deve controllare non c'è; `false` lo spegne. */
 export type FeatureSetting = 'required' | false
 
+export type GeneratorsSetting = FeatureSetting | 'project'
+
 export interface OfficinaConfig {
   /** L'apice di produzione, senza barra finale: lo usa `check smoke` quando non riceve un URL. */
   siteUrl?: string
@@ -22,22 +24,26 @@ export interface OfficinaConfig {
   }
   analytics?: { linkTracking?: string }
   /** Quali controlli il progetto pretende. Una voce non dichiarata vale `'required'`. */
-  features?: { analytics?: FeatureSetting; roadmap?: FeatureSetting }
+  features?: { analytics?: FeatureSetting; roadmap?: FeatureSetting; generators?: GeneratorsSetting }
   placeholders?: { sources?: readonly string[]; contactEnvKeys?: readonly string[] }
   /** Per ogni pattern dinamico di `src/pages`, un percorso vero che smoke e Lighthouse visitano. */
   routes?: { representatives?: Representatives }
 }
 
-export const FEATURES = ['analytics', 'roadmap'] as const
+export const FEATURES = ['analytics', 'roadmap', 'generators'] as const
 export type FeatureName = (typeof FEATURES)[number]
 
 /** Un controllo si spegne solo scrivendolo: il silenzio vale `'required'`. */
 export const isRequired = (config: OfficinaConfig, name: FeatureName): boolean =>
   (config.features?.[name] ?? 'required') === 'required'
 
+export const generatorsSetting = (config: OfficinaConfig): GeneratorsSetting =>
+  config.features?.generators ?? 'required'
+
 const budget = aShape({ label: aString, matches: aFunction, maxGzip: aNumber })
 const verifiedRoute = aShape({ path: aString, type: aString })
 const feature = oneOf("'required' oppure false", ['required', false])
+const generators = oneOf("'required', 'project' oppure false", ['required', 'project', false])
 
 const SHAPE = aShape({
   siteUrl: aString,
@@ -49,7 +55,7 @@ const SHAPE = aShape({
     checks: anArrayOf(aFunction),
   }),
   analytics: aShape({ linkTracking: aString }),
-  features: aShape({ analytics: feature, roadmap: feature }),
+  features: aShape({ analytics: feature, roadmap: feature, generators }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
   routes: aShape({ representatives: aRecordOf(aString) }),
 })

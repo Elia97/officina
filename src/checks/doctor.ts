@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-
+import { PROJECT_GENERATORS } from '../gen/plopfile.mjs'
 import {
   dependencyGaps,
   leftoverGaps,
@@ -13,7 +13,13 @@ import {
 } from '../lib/alignment.ts'
 import { anchorGaps } from '../lib/anchors.ts'
 import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts'
-import { findConfigFile, loadConfig, type OfficinaConfig } from '../lib/config.ts'
+import {
+  findConfigFile,
+  type GeneratorsSetting,
+  generatorsSetting,
+  loadConfig,
+  type OfficinaConfig,
+} from '../lib/config.ts'
 import { configGaps } from '../lib/config-gaps.ts'
 import { type ContractGap, contractGaps } from '../lib/contract.ts'
 import { dependabotGaps } from '../lib/dependabot.ts'
@@ -49,6 +55,36 @@ async function loadedConfig(root: string): Promise<OfficinaConfig | Error | unde
   }
 }
 
+type Section = { title: string; gaps: ContractGap[] } | { title: string; off: string }
+
+const HOOK_POINTS = 'punti di aggancio dei generatori'
+const ANCHORS = 'ancoraggi delle pagine a sezioni e dei dizionari'
+
+const usable = (config: OfficinaConfig | Error | undefined): OfficinaConfig =>
+  config === undefined || config instanceof Error ? {} : config
+
+function generatorSections(root: string, setting: GeneratorsSetting): Section[] {
+  if (setting === 'required') {
+    return [
+      { title: HOOK_POINTS, gaps: contractGaps(root) },
+      { title: ANCHORS, gaps: anchorGaps(root) },
+    ]
+  }
+  const off = `\`features.generators: ${setting === false ? 'false' : "'project'"}\``
+  if (setting === false)
+    return [
+      { title: HOOK_POINTS, off },
+      { title: ANCHORS, off },
+    ]
+  const missing = existsSync(join(root, PROJECT_GENERATORS))
+    ? []
+    : [{ path: PROJECT_GENERATORS, message: "manca: con `generators: 'project'` i generatori sono i suoi" }]
+  return [
+    { title: HOOK_POINTS, gaps: missing },
+    { title: ANCHORS, off },
+  ]
+}
+
 function orphanPatterns(root: string, config: OfficinaConfig | Error | undefined): string[] {
   const pages = join(root, PAGES)
   if (!existsSync(pages) || config === undefined || config instanceof Error) return []
@@ -62,22 +98,29 @@ export async function main(): Promise<number> {
   const version = packageVersion()
   const config = await loadedConfig(root)
 
-  const sections: [title: string, gaps: ContractGap[]][] = [
-    ['punti di aggancio dei generatori', contractGaps(root)],
-    ['ancoraggi delle pagine a sezioni e dei dizionari', anchorGaps(root)],
-    [
-      'script, dipendenze e strumenti di package.json',
-      [...scriptGaps(manifest), ...dependencyGaps(manifest), ...toolingGaps(manifest)],
-    ],
-    ['residui di ciò che è uscito dal repository', leftoverGaps(files)],
-    ['preset di configurazione', presetGaps(files)],
-    ['workflow di GitHub e Dependabot', [...workflowGaps(files, version), ...dependabotGaps(files)]],
-    ['officina.config.ts', configGaps(config, orphanPatterns(root, config))],
+  const sections: Section[] = [
+    ...generatorSections(root, generatorsSetting(usable(config))),
+    {
+      title: 'script, dipendenze e strumenti di package.json',
+      gaps: [...scriptGaps(manifest), ...dependencyGaps(manifest), ...toolingGaps(manifest)],
+    },
+    { title: 'residui di ciò che è uscito dal repository', gaps: leftoverGaps(files) },
+    { title: 'preset di configurazione', gaps: presetGaps(files) },
+    {
+      title: 'workflow di GitHub e Dependabot',
+      gaps: [...workflowGaps(files, version), ...dependabotGaps(files)],
+    },
+    { title: 'officina.config.ts', gaps: configGaps(config, orphanPatterns(root, config)) },
   ]
 
   console.log(`\nofficina doctor ${version} — cosa manca al progetto per prendere tutto da fuori\n`)
   const findings: Finding[] = []
-  for (const [title, gaps] of sections) {
+  for (const section of sections) {
+    if ('off' in section) {
+      console.log(`  · ${section.title} — spento da ${section.off}`)
+      continue
+    }
+    const { title, gaps } = section
     console.log(gaps.length === 0 ? `  ✓ ${title}` : `  ${title}: ${gaps.length}`)
     const sectionFindings = gaps.map((gap): Finding => ({ ...gap, severity: 'error' }))
     printFindings(sectionFindings, cliOptions([]).format)

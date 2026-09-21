@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { defineConfig, findConfigFile, isRequired, loadConfig } from './config.ts'
+import { defineConfig, findConfigFile, generatorsSetting, isRequired, loadConfig } from './config.ts'
 
 const roots: string[] = []
 
@@ -107,5 +107,25 @@ describe('defineConfig', () => {
     const value = { siteUrl: 'https://prova.test' }
 
     expect(defineConfig(value)).toBe(value)
+  })
+})
+
+describe('generatorsSetting', () => {
+  it("senza dichiarazione i generatori del pacchetto valgono: il silenzio è `'required'`", () => {
+    expect(generatorsSetting({})).toBe('required')
+    expect(generatorsSetting({ features: {} })).toBe('required')
+  })
+
+  it.each([['required'], ['project'], [false]] as const)('legge %s', (setting) => {
+    expect(generatorsSetting({ features: { generators: setting } })).toBe(setting)
+  })
+
+  it("accetta 'project' e rifiuta un valore inventato, nominando la voce", async () => {
+    expect(await loadConfig(config("{ features: { generators: 'project' } }"))).toMatchObject({
+      features: { generators: 'project' },
+    })
+    await expect(loadConfig(config("{ features: { generators: 'tutti' } }"))).rejects.toThrow(
+      "features.generators: atteso 'required', 'project' oppure false, ricevuto una stringa",
+    )
   })
 })
