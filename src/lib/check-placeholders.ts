@@ -1,11 +1,13 @@
-import { readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseEnv } from 'node:util'
 
 import { type Finding, type Hit, readLines } from './cli.ts'
+import type { OfficinaConfig } from './config.ts'
 
 const DICTIONARIES = 'src/i18n/strings'
-const CONTACT_ENV_KEYS = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME', 'CONTACT_TO_EMAIL'] as const
+const DEFAULT_SOURCES: readonly string[] = ['src/lib/site.ts', 'src/lib/company.ts']
+const CONTACT_ENV_KEYS: readonly string[] = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME', 'CONTACT_TO_EMAIL']
 
 const TOKEN = /<[A-Z][A-Z_]{2,}>/
 const DOMAIN = /\bexample\.com\b/
@@ -16,13 +18,22 @@ const EMPTY_HREF = /\bhref:\s*(['"])#\1/
 
 type EnvHit = Omit<Finding, 'path' | 'severity'>
 
-export function placeholderSources(): string[] {
-  const dictionaries = readdirSync(DICTIONARIES)
-    .filter((name) => name.endsWith('.ts'))
-    .sort()
-    .map((name) => join(DICTIONARIES, name))
-  return ['src/lib/site.ts', 'src/lib/company.ts', ...dictionaries]
+const dictionaries = (): string[] =>
+  existsSync(DICTIONARIES)
+    ? readdirSync(DICTIONARIES)
+        .filter((name) => name.endsWith('.ts'))
+        .sort()
+        .map((name) => join(DICTIONARIES, name))
+    : []
+
+export function placeholderSources(config: OfficinaConfig = {}): string[] {
+  const declared = config.placeholders?.sources
+  if (declared !== undefined) return [...declared]
+  return [...DEFAULT_SOURCES, ...dictionaries()]
 }
+
+export const contactEnvKeys = (config: OfficinaConfig = {}): readonly string[] =>
+  config.placeholders?.contactEnvKeys ?? CONTACT_ENV_KEYS
 
 function literalFindings(value: string): string[] {
   const messages: string[] = []
@@ -43,10 +54,10 @@ export function sourceFindings(source: string): Hit[] {
   })
 }
 
-export function envFindings(content: string): EnvHit[] {
+export function envFindings(content: string, keys: readonly string[]): EnvHit[] {
   const env = parseEnv(content)
   const lines = readLines(content)
-  return CONTACT_ENV_KEYS.flatMap((key): EnvHit[] => {
+  return keys.flatMap((key): EnvHit[] => {
     const value = env[key]?.trim() ?? ''
     const declaration = lines.find(({ text }) => new RegExp(`^\\s*${key}\\s*=`).test(text))
     const at = declaration ? { line: declaration.n } : {}
