@@ -10,13 +10,13 @@ inputs:
     required: false
     default: ''
   vercel-token:
-    description: 'Token Vercel — `${{ secrets.VERCEL_TOKEN }}`'
+    description: 'Token Vercel: il progetto passa il proprio segreto VERCEL_TOKEN'
     required: true
   vercel-org-id:
-    description: 'ID della organizzazione Vercel — `${{ secrets.VERCEL_ORG_ID }}`'
+    description: 'ID della organizzazione Vercel: il progetto passa il proprio segreto VERCEL_ORG_ID'
     required: true
   vercel-project-id:
-    description: 'ID del progetto Vercel — `${{ secrets.VERCEL_PROJECT_ID }}`'
+    description: 'ID del progetto Vercel: il progetto passa il proprio segreto VERCEL_PROJECT_ID'
     required: true
 
 outputs:
@@ -78,9 +78,8 @@ runs:
     - run: pnpm run ci
       shell: bash
 
-    # Pin esatto: fissare la sola major ridà una CLI diversa ogni settimana, e un deploy che
-    # fallisce non si riproduce. Che su npm ne esca una major più nuova lo dice ogni lunedì
-    # `.github/workflows/vercel-cli.yml` di officina.
+    # Pin esatto: la sola major ridà una CLI diversa ogni settimana, e un deploy che fallisce non si
+    # riproduce. Che su npm ne esca una più nuova lo dice `.github/workflows/vercel-cli.yml`.
     - run: pnpm dlx vercel@59.22.0 pull --yes --environment=production
       shell: bash
       env:

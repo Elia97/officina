@@ -1,11 +1,11 @@
 import type { ProjectFiles } from './alignment.ts'
 import type { ContractGap } from './contract.ts'
 
-// I workflow restano una ricerca testuale — non c'è un parser YAML nel pacchetto — ma una riga
-// commentata non deve soddisfare niente: è il modo più facile per avere un progetto «a posto»
-// che in CI non lancia nessuno di questi passi.
-const liveLines = (source: string): string[] =>
-  source.split(/\r?\n/).filter((line) => !line.trimStart().startsWith('#'))
+// Niente parser YAML nel pacchetto: la ricerca è testuale. Una riga commentata non soddisfa nessun
+// controllo, altrimenti basta commentare un passo per avere un progetto «a posto» che non lo lancia.
+export const isLive = (line: string): boolean => !line.trimStart().startsWith('#')
+
+const liveLines = (source: string): string[] => source.split(/\r?\n/).filter(isLive)
 
 export const mentions = (source: string | undefined, needle: string): boolean =>
   source !== undefined && liveLines(source).some((line) => line.includes(needle))
