@@ -42,6 +42,12 @@ export type CliOptions = ReturnType<typeof cliOptions>
 // formatter: una correzione ai suoi commenti sparirebbe alla prima rigenerazione.
 export const isGenerated = (path: string): boolean => /\.gen\.[cm]?tsx?$/.test(path)
 
+export function missingInput(path: string, purpose: string): boolean {
+  if (existsSync(path)) return false
+  console.error(`\n✗ ${path} non c'è: ${purpose}.\n`)
+  return true
+}
+
 export function scopedPaths(options: CliOptions, isScanned: (path: string) => boolean): string[] {
   const candidates = options.diff ? changedFiles({ base: options.base, head: options.head }) : trackedAndUntracked()
   // ls-files elenca anche i file cancellati ma non ancora rimossi dall'indice.

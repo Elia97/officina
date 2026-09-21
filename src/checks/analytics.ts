@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import process from 'node:process'
 
 import { type Coverage, coverageOf, extractLinkEvents } from '../lib/analytics-coverage.ts'
+import { missingInput } from '../lib/cli.ts'
 import { isRequired, loadConfig } from '../lib/config.ts'
 import { extractTriggers, googleTagIds, parseContainerData } from '../lib/gtm-container.ts'
 
@@ -47,6 +48,10 @@ export async function main(args: string[] = []): Promise<number> {
     return 1
   }
 
+  const linkTracking = analytics.linkTracking ?? LINK_TRACKING
+  if (missingInput(linkTracking, 'è il modulo da cui si leggono gli eventi; `analytics.linkTracking` dice dove sta'))
+    return 1
+
   const response = await fetch(`https://www.googletagmanager.com/gtm.js?id=${gtmId}`, {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   })
@@ -56,7 +61,7 @@ export async function main(args: string[] = []): Promise<number> {
   }
 
   const container = parseContainerData(await response.text())
-  const source = readFileSync(analytics.linkTracking ?? LINK_TRACKING, 'utf8')
+  const source = readFileSync(linkTracking, 'utf8')
   const coverage = coverageOf(extractLinkEvents(source), extractTriggers(container))
 
   console.log(`\nGTM ${gtmId} — ID di misurazione: ${googleTagIds(container).join(', ') || '—'}\n`)

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { cliOptions, exitCode, isGenerated, printFindings, readLines } from './cli.ts'
+import { cliOptions, exitCode, isGenerated, missingInput, printFindings, readLines } from './cli.ts'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -128,5 +128,36 @@ describe('readLines', () => {
       { n: 1, text: 'a' },
       { n: 2, text: 'b' },
     ])
+  })
+})
+
+describe('missingInput', () => {
+  const errorLines = (fn: () => void): string[] => {
+    const lines: string[] = []
+    vi.spyOn(console, 'error').mockImplementation((line: string) => {
+      lines.push(line)
+    })
+    fn()
+    return lines
+  }
+
+  it('su un percorso che esiste non dice niente', () => {
+    let missing = true
+    const lines = errorLines(() => {
+      missing = missingInput('package.json', 'serve a qualcosa')
+    })
+
+    expect(missing).toBe(false)
+    expect(lines).toEqual([])
+  })
+
+  it('su un percorso che non esiste nomina il file e dice a cosa serve', () => {
+    let missing = false
+    const lines = errorLines(() => {
+      missing = missingInput('public/favicon.svg', 'è il disegno da cui escono i PNG')
+    })
+
+    expect(missing).toBe(true)
+    expect(lines.join('\n')).toContain("public/favicon.svg non c'è: è il disegno da cui escono i PNG.")
   })
 })

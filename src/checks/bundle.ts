@@ -19,6 +19,7 @@ import {
   type Stylesheet,
   staticClosure,
 } from '../lib/bundle-budget.ts'
+import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
 import {
   type Expectations,
@@ -125,6 +126,9 @@ function printSsrNote(expected: Expectations): void {
 
 export async function main(): Promise<number> {
   const { bundle = {} } = await loadConfig(process.cwd())
+  if (missingInput(ASSETS, 'è la build da misurare: prima `pnpm build`')) return 1
+  if (missingInput(PAGES, 'le rotte attese si derivano da lì')) return 1
+
   const cssMaxGzip = bundle.cssMaxGzip ?? CSS_BUDGET_GZIP
 
   const pages = measurePages(readChunks(), bundle.budgets ?? [])
