@@ -59,24 +59,3 @@ export function workflowGaps({ read }: ProjectFiles, version: string): ContractG
     return message === undefined ? [] : [{ path: workflow, message }]
   })
 }
-
-const DEPENDABOT = '.github/dependabot.yml'
-
-// Senza il gruppo, Dependabot apre due PR — una per il pacchetto npm, una per le action — e il
-// controllo di coerenza qui sopra le boccia entrambe, perché nessuna delle due allinea l'altra.
-const GROUPED: readonly { needle: string; reason: string }[] = [
-  { needle: 'multi-ecosystem-groups', reason: 'il pacchetto e le sue action si alzano in una PR sola' },
-  { needle: '@elia97/officina', reason: 'il gruppo deve prendere il pacchetto da npm' },
-  { needle: 'Elia97/officina/*', reason: 'il gruppo deve prendere le action da github-actions' },
-]
-
-export function dependabotGaps({ read }: ProjectFiles): ContractGap[] {
-  const source = read(DEPENDABOT)
-  if (source === undefined) {
-    return [{ path: DEPENDABOT, message: 'manca: senza, il pacchetto e le sue action si alzano separati' }]
-  }
-  return GROUPED.filter(({ needle }) => !mentions(source, needle)).map(({ needle, reason }) => ({
-    path: DEPENDABOT,
-    message: `non nomina \`${needle}\`: ${reason}`,
-  }))
-}
