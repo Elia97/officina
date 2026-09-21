@@ -13,10 +13,12 @@ import sectionGenerator from './section.mjs'
 export const PROJECT_GENERATORS = 'officina.generators.mjs'
 
 export default async function (plop) {
-  sectionGenerator(plop)
-  pageGenerator(plop)
-  componentGenerator(plop)
-  collectionGenerator(plop)
+  if (process.env.OFFICINA_GENERATORS !== 'project') {
+    sectionGenerator(plop)
+    pageGenerator(plop)
+    componentGenerator(plop)
+    collectionGenerator(plop)
+  }
 
   const extension = join(process.cwd(), PROJECT_GENERATORS)
   if (!existsSync(extension)) return

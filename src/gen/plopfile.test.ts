@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import definePlopfile, { PROJECT_GENERATORS } from './plopfile.mjs'
 import type { FakePlop, GeneratorConfig } from './test-helpers/fake-plop.ts'
@@ -29,6 +29,7 @@ function emptyPlop(): FakePlop {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   process.chdir(original)
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
@@ -54,5 +55,21 @@ describe('plopfile del pacchetto', () => {
     await definePlopfile(plop)
 
     expect([...plop.registered.keys()]).toContain('listing')
+  })
+})
+
+describe("con `features.generators: 'project'`", () => {
+  const projectGenerator =
+    "export default function (plop) {\n  plop.setGenerator('listing', { description: 'x', prompts: [], actions: [] })\n}\n"
+
+  it('restano solo i generatori del progetto: quelli del pacchetto qui non si incastrerebbero', async () => {
+    const root = projectRoot()
+    writeFileSync(join(root, PROJECT_GENERATORS), projectGenerator)
+    vi.stubEnv('OFFICINA_GENERATORS', 'project')
+    const plop = emptyPlop()
+
+    await definePlopfile(plop)
+
+    expect([...plop.registered.keys()]).toEqual(['listing'])
   })
 })
