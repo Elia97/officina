@@ -16,11 +16,12 @@ import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts
 import { findConfigFile, loadConfig, type OfficinaConfig } from '../lib/config.ts'
 import { configGaps } from '../lib/config-gaps.ts'
 import { type ContractGap, contractGaps } from '../lib/contract.ts'
+import { dependabotGaps } from '../lib/dependabot.ts'
 import { trackedAndUntracked } from '../lib/git.ts'
 import { expectedRoutes, missingRepresentatives, readPageFiles } from '../lib/routes.ts'
 import { toolingGaps } from '../lib/tooling.ts'
 import { packageVersion } from '../lib/versions.ts'
-import { dependabotGaps, workflowGaps } from '../lib/workflows.ts'
+import { workflowGaps } from '../lib/workflows.ts'
 
 const PAGES = 'src/pages'
 

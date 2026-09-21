@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ProjectFiles } from './alignment.ts'
-import { dependabotGaps, workflowGaps } from './workflows.ts'
+import { workflowGaps } from './workflows.ts'
 
 const files = (contents: Record<string, string> = {}): ProjectFiles => ({ paths: [], read: (path) => contents[path] })
 const messages = (gaps: { message: string }[]) => gaps.map(({ message }) => message)
@@ -65,44 +65,5 @@ describe('workflowGaps', () => {
     })
 
     expect(messages(workflowGaps(project, VERSION))).toContain('non usa `Elia97/officina/actions/deploy`')
-  })
-})
-
-describe('dependabotGaps', () => {
-  const grouped = [
-    'version: 2',
-    'multi-ecosystem-groups:',
-    '  officina:',
-    '    schedule:',
-    '      interval: weekly',
-    'updates:',
-    '  - package-ecosystem: npm',
-    '    patterns: ["@elia97/officina"]',
-    '  - package-ecosystem: github-actions',
-    '    patterns: ["Elia97/officina/*"]',
-  ].join('\n')
-
-  it('non trova niente quando pacchetto e action stanno nello stesso gruppo', () => {
-    expect(dependabotGaps(files({ '.github/dependabot.yml': grouped }))).toEqual([])
-  })
-
-  it('senza il file lo dice, perché le due PR separate si bocciano a vicenda', () => {
-    expect(messages(dependabotGaps(files()))).toEqual(['manca: senza, il pacchetto e le sue action si alzano separati'])
-  })
-
-  it('nomina ogni pezzo del gruppo che manca', () => {
-    const project = files({ '.github/dependabot.yml': 'version: 2\nupdates:\n  - package-ecosystem: npm\n' })
-
-    expect(dependabotGaps(project)).toHaveLength(3)
-  })
-
-  it('non si accontenta di un gruppo scritto in un commento', () => {
-    const project = files({
-      '.github/dependabot.yml': grouped.replace('multi-ecosystem-groups:', '# multi-ecosystem-groups:'),
-    })
-
-    expect(messages(dependabotGaps(project))).toEqual([
-      'non nomina `multi-ecosystem-groups`: il pacchetto e le sue action si alzano in una PR sola',
-    ])
   })
 })
