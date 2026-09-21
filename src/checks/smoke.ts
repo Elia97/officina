@@ -3,6 +3,7 @@
 
 import process from 'node:process'
 
+import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
 import { expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
 import {
@@ -53,6 +54,8 @@ export async function main(args: string[] = []): Promise<number> {
     siteUrl,
     securityHeaders: smoke.securityHeaders ?? SECURITY_HEADERS,
   }
+  if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return 1
+
   const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR)
   const pages = smokeRoutes(expected, smoke.nonHtmlRoutes, routes.representatives)
 

@@ -44,7 +44,7 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 | `check smoke [url]` | la produzione viva: pagine, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
 | `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi del modulo di link-tracking del progetto (`analytics.linkTracking`) | — |
 | `check lighthouse [--local]` | Lighthouse CI sul `.lighthouserc.json` del progetto; `--local` fa build, server e Chrome da sé | `src/pages` |
-| `gen icons` | le icone del manifest, disegnate dal favicon SVG in `public/` del progetto | — |
+| `gen icons` | le icone del manifest, disegnate da `public/favicon.svg`, che è il suo ingresso obbligatorio | — |
 
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
@@ -83,7 +83,7 @@ La radice del pacchetto esporta `defineConfig` e i tipi; i pezzi del motore stan
 
 Il file lo carica Node, che fuori da `node_modules` toglie i tipi da sé: niente `enum`, niente alias `@/`. Due file `officina.config.*` insieme sono un errore, come un file senza default export; il resto lo valida `loadConfig` a runtime, nominando il percorso della voce sbagliata — `bundle.cssMaxGzip: atteso un numero, ricevuto una stringa` — e una voce sconosciuta, perché `sitUrl` al posto di `siteUrl` non deve passare in silenzio.
 
-`sharp` è una dipendenza facoltativa del progetto, non del pacchetto: serve solo a `gen icons`, che senza lo dice ed esce 1. `@biomejs/biome` invece è una peer dependency con l'intervallo che il preset regge, e `doctor` confronta la versione del progetto con quello.
+`sharp` è una dipendenza facoltativa del progetto, non del pacchetto: serve solo a `gen icons`, che senza lo dice ed esce 1. Un ingresso che manca — il favicon, `.lighthouserc.json`, `src/pages`, la build in `dist/client` — è sempre una riga che nomina il file e dice a cosa serve, mai uno stack trace. `@biomejs/biome` invece è una peer dependency con l'intervallo che il preset regge, e `doctor` confronta la versione del progetto con quello.
 
 ## Preset di configurazione
 

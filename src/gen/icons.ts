@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import process from 'node:process'
 
+import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
+
+const FAVICON = 'public/favicon.svg'
 
 const isMissingSharp = (error: unknown): boolean =>
   error instanceof Error && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND' && error.message.includes('sharp')
@@ -12,6 +15,8 @@ export async function main(): Promise<number> {
     console.error('\n✗ officina.config.ts non dichiara icons.background: è il colore di fondo delle icone.\n')
     return 1
   }
+
+  if (missingInput(FAVICON, 'è il disegno da cui officina ricava i PNG del manifest')) return 1
 
   try {
     // Caricato qui e non in testa: sharp è del progetto, e chi non genera icone non lo deve avere.

@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
 import { type LighthouseRc, lighthouseConfig } from '../lib/lighthouse.ts'
 import { auditRoutes, expectedRoutes, readPageFiles } from '../lib/routes.ts'
@@ -26,6 +27,9 @@ export async function main(args: string[] = []): Promise<number> {
   if (args.includes('--local')) return runLocal()
 
   const { routes: configured = {} } = await loadConfig(process.cwd())
+  if (missingInput(RC_FILE, 'è la configurazione di Lighthouse CI')) return 1
+  if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return 1
+
   const rc: LighthouseRc = JSON.parse(readFileSync(RC_FILE, 'utf8'))
   const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), configured.representatives)
   const resolved = lighthouseConfig(rc, routes, process.env)

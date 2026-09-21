@@ -1,5 +1,5 @@
 name: officina review
-description: La review informativa di fallow sul diff contro il merge-base. Esce sempre 0.
+description: La review informativa di fallow sul diff contro il merge-base. Un verdetto non blocca.
 
 runs:
   using: composite
@@ -19,6 +19,6 @@ runs:
     - run: pnpm install --frozen-lockfile
       shell: bash
 
-    - name: fallow review (informativa, esce sempre 0)
-      run: pnpm exec fallow review
+    - name: fallow review (informativa: un verdetto non blocca)
+      run: pnpm exec fallow review --brief
       shell: bash
