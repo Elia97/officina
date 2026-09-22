@@ -47,6 +47,13 @@ trap cleanup EXIT
 echo "→ build equivalente alla produzione in ${OUT_DIR}"
 VERCEL_ENV=production pnpm build --outDir "${OUT_DIR}"
 
+if [[ -z "$(find "${OUT_DIR}/client" -name '*.html' -print -quit 2>/dev/null)" ]]; then
+  echo "✗ ${OUT_DIR}/client non contiene HTML: il sito è renderizzato a richiesta (output: 'server')," >&2
+  echo "  e un server statico risponderebbe 404 su ogni rotta. Misura un sito già servito:" >&2
+  echo "  pnpm run lhci https://…   (produzione o anteprima)" >&2
+  exit 1
+fi
+
 if ! grep -qx 'Allow: /' "${OUT_DIR}/client/robots.txt"; then
   echo "✗ ${OUT_DIR}/client/robots.txt non ha 'Allow: /': la build non equivale alla produzione." >&2
   head -3 "${OUT_DIR}/client/robots.txt" >&2
