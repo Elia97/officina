@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { type LighthouseRc, lighthouseConfig } from './lighthouse.ts'
+import { baseUrlArg, type LighthouseRc, lighthouseConfig } from './lighthouse.ts'
 
 const rc = (): LighthouseRc => ({
   ci: {
@@ -64,5 +64,39 @@ describe('lighthouseConfig', () => {
     lighthouseConfig(original, ['/'], { LH_EXTERNAL_SERVER: '1', LH_OUT: 'out' })
 
     expect(original).toEqual(rc())
+  })
+})
+
+describe('la porta e il sito da misurare', () => {
+  it.each([
+    ['pnpm exec astro dev --port 4321', 'pnpm exec astro dev --port 4399'],
+    ['pnpm exec astro dev --port=4321', 'pnpm exec astro dev --port=4399'],
+    ['pnpm dlx serve@14 dist/client --listen=4321', 'pnpm dlx serve@14 dist/client --listen=4399'],
+  ])('porta la porta scelta anche in «%s»', (command, expected) => {
+    const custom: LighthouseRc = { ci: { collect: { startServerCommand: command } } }
+
+    expect(lighthouseConfig(custom, ['/'], { LH_PORT: '4399' }).ci.collect.startServerCommand).toBe(expected)
+  })
+
+  it('con un URL di base misura quel sito, e non avvia il server del progetto', () => {
+    const { collect } = lighthouseConfig(rc(), ['/', '/contatti'], { LH_BASE_URL: 'https://acme.test' }).ci
+
+    expect(collect.url).toEqual(['https://acme.test/', 'https://acme.test/contatti'])
+    expect(collect.startServerCommand).toBeUndefined()
+    expect(collect.startServerReadyPattern).toBeUndefined()
+  })
+})
+
+describe('baseUrlArg', () => {
+  it('senza argomenti non chiede nessun URL', () => {
+    expect(baseUrlArg(['--local'])).toEqual({})
+  })
+
+  it("prende l'URL http(s) e ne toglie le barre finali", () => {
+    expect(baseUrlArg(['https://acme.test//'])).toEqual({ url: 'https://acme.test' })
+  })
+
+  it.each(['acme.test', 'ftp://acme.test'])('rifiuta %s, che non è un sito da visitare', (arg) => {
+    expect(baseUrlArg([arg]).error).toContain(`${arg} non è un URL http(s)`)
   })
 })

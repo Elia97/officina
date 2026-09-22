@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
-import { type LighthouseRc, lighthouseConfig } from '../lib/lighthouse.ts'
+import { baseUrlArg, type LighthouseRc, lighthouseConfig } from '../lib/lighthouse.ts'
 import { auditRoutes, expectedRoutes, readPageFiles } from '../lib/routes.ts'
 
 const PAGES_DIR = 'src/pages'
@@ -23,21 +23,24 @@ function runLocal(): number {
   return spawnSync('bash', [script], { stdio: 'inherit', env }).status ?? 1
 }
 
-export async function main(args: string[] = []): Promise<number> {
-  if (args.includes('--local')) return runLocal()
-
+async function resolveConfig(url: string | undefined): Promise<LighthouseRc | null> {
   const { routes: configured = {} } = await loadConfig(process.cwd())
-  if (missingInput(RC_FILE, 'è la configurazione di Lighthouse CI')) return 1
-  if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return 1
+  if (missingInput(RC_FILE, 'è la configurazione di Lighthouse CI')) return null
+  if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return null
 
   const rc: LighthouseRc = JSON.parse(readFileSync(RC_FILE, 'utf8'))
   const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), configured.representatives)
-  const resolved = lighthouseConfig(rc, routes, process.env)
+  const env = url === undefined ? process.env : { ...process.env, LH_BASE_URL: url }
+  const resolved = lighthouseConfig(rc, routes, env)
 
-  console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}\n`)
-  for (const url of resolved.ci.collect.url ?? []) console.log(`  ${url}`)
+  const where = url === undefined ? '' : ` su ${url}`
+  console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}${where}\n`)
+  for (const page of resolved.ci.collect.url ?? []) console.log(`  ${page}`)
   console.log()
+  return resolved
+}
 
+function autorun(resolved: LighthouseRc): number {
   const dir = mkdtempSync(join(tmpdir(), 'lhci-'))
   const config = join(dir, 'lighthouserc.json')
   writeFileSync(config, JSON.stringify(resolved, null, 2))
@@ -48,6 +51,19 @@ export async function main(args: string[] = []): Promise<number> {
   rmSync(dir, { recursive: true, force: true })
 
   return status ?? 1
+}
+
+export async function main(args: string[] = []): Promise<number> {
+  if (args.includes('--local')) return runLocal()
+
+  const { url, error } = baseUrlArg(args)
+  if (error !== undefined) {
+    console.error(`\n✗ ${error}\n`)
+    return 1
+  }
+
+  const resolved = await resolveConfig(url)
+  return resolved === null ? 1 : autorun(resolved)
 }
 
 if (import.meta.main) process.exit(await main(process.argv.slice(2)))
