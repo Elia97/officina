@@ -19,6 +19,7 @@ import {
   type Stylesheet,
   staticClosure,
 } from '../lib/bundle-budget.ts'
+import { type PageEntries, readSsr, type SsrReading } from '../lib/bundle-ssr.ts'
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
 import {
@@ -53,12 +54,22 @@ function readChunks(): Map<string, Chunk> {
   return chunks
 }
 
-function measurePages(chunks: Map<string, Chunk>, budgets: readonly Budget[]): MeasuredPage[] {
+function htmlPages(): PageEntries[] {
+  return filesWithExtension(DIST, '.html').map((htmlPath) => ({
+    route: routeOf(htmlPath, DIST),
+    entries: htmlEntries(readFileSync(htmlPath, 'utf8')),
+  }))
+}
+
+function measurePages(
+  pages: readonly PageEntries[],
+  chunks: Map<string, Chunk>,
+  budgets: readonly Budget[],
+): MeasuredPage[] {
   const total = (names: Set<string>) => [...names].reduce((sum, name) => sum + (chunks.get(name)?.gzip ?? 0), 0)
-  return filesWithExtension(DIST, '.html')
-    .map((htmlPath) => {
-      const route = routeOf(htmlPath, DIST)
-      const { reached, unknown } = staticClosure(htmlEntries(readFileSync(htmlPath, 'utf8')), chunks)
+  return pages
+    .map(({ route, entries }) => {
+      const { reached, unknown } = staticClosure(entries, chunks)
       return {
         route,
         gzip: total(reached),
@@ -118,8 +129,9 @@ function printStylesheets(
   }
 }
 
-function printSsrNote(expected: Expectations): void {
-  if (expected.ssr.length === 0) return
+function printSsrNote(expected: Expectations, ssr: SsrReading): void {
+  for (const note of ssr.notes) console.log(`\nNOTA  ${note}`)
+  if (ssr.measured || expected.ssr.length === 0) return
   console.log(`\nNOTA  ${expected.ssr.length} pagina/e con \`export const prerender = false\`, fuori da questo budget:`)
   for (const file of expected.ssr) console.log(`      - ${file}`)
 }
@@ -131,14 +143,13 @@ export async function main(): Promise<number> {
 
   const cssMaxGzip = bundle.cssMaxGzip ?? CSS_BUDGET_GZIP
 
-  const pages = measurePages(readChunks(), bundle.budgets ?? [])
+  const html = htmlPages()
+  const ssr = readSsr(html.length > 0)
+  const pages = measurePages([...html, ...ssr.pages], readChunks(), bundle.budgets ?? [])
   const expected = expectedRoutes(readPageFiles(PAGES), PAGES)
-  const failures = missingRouteFailures(
-    expected,
-    pages.map((page) => page.route),
-    DIST,
-  )
-  failures.push(...unknownChunkFailures(pages), ...overBudgetFailures(pages))
+  const measured = pages.map((page) => page.route)
+  const failures = ssr.comparesExpectedRoutes ? missingRouteFailures(expected, measured, DIST) : []
+  failures.push(...ssr.failures, ...unknownChunkFailures(pages), ...overBudgetFailures(pages))
 
   const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)
@@ -147,13 +158,17 @@ export async function main(): Promise<number> {
   const cssFailure = cssBudgetFailure(stylesheets, cssMaxGzip)
   if (cssFailure) failures.push(cssFailure)
   printStylesheets(stylesheets, cssMaxGzip, cssFailure !== null, width)
-  printSsrNote(expected)
+  printSsrNote(expected, ssr)
 
   if (failures.length > 0) {
     console.error(`\n✗ Budget di bundle:\n${failures.map((f) => `  - ${f}`).join('\n')}\n`)
     return 1
   }
-  console.log('\n✓ Budget di bundle rispettato su ogni rotta attesa.\n')
+  console.log(
+    ssr.comparesExpectedRoutes
+      ? '\n✓ Budget di bundle rispettato su ogni rotta attesa.\n'
+      : '\n✓ Budget del CSS rispettato; le rotte non sono state misurate.\n',
+  )
   return 0
 }
 

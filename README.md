@@ -40,11 +40,13 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 
 | Comando | Cosa guarda | Da dove prende le rotte |
 |---|---|---|
-| `check bundle` | il JavaScript e il CSS di `dist/client`, gzip, contro un budget per rotta | `src/pages` |
+| `check bundle` | il JavaScript e il CSS di `dist/client`, gzip, contro un budget per rotta | `src/pages`; sotto SSR, il manifest della build Vercel |
 | `check smoke [url]` | la produzione viva: pagine, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
 | `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi del modulo di link-tracking del progetto (`analytics.linkTracking`) | — |
 | `check lighthouse [--local]` | Lighthouse CI sul `.lighthouserc.json` del progetto; `--local` fa build, server e Chrome da sé | `src/pages` |
 | `gen icons` | le icone del manifest, disegnate da `public/favicon.svg`, che è il suo ingresso obbligatorio | — |
+
+Una rotta renderizzata a richiesta non emette HTML. Con l'adapter Vercel, `check bundle` la legge dal manifest che Astro scrive in `.vercel/output/_functions` e la misura con gli stessi budget delle pagine statiche: gli script della rotta, le isole e gli script dei componenti che i chunk server della pagina nominano, e il runtime del framework quando c'è un'isola. Il JavaScript che Astro incorpora nell'HTML non si conta, né qui né per le pagine statiche. Due limiti: le isole raggiungibili solo attraverso un `import()` dinamico del server — un'isola dentro un contenuto MDX, per esempio — restano fuori, perché seguire quegli import attribuirebbe a ogni pagina il contenuto di tutto il sito; e un'isola si attribuisce per chunk, quindi una pagina eredita le isole dei componenti che condividono un chunk con quelli che usa. Il manifest è un formato interno di Astro, già cambiato una volta sotto i piedi del misuratore che c'era prima: quando non lo riconosce il check lo dice, e fallisce se non gli resta nessuna rotta da misurare; un'isola che non sa collegare al client è un fallimento, non una misura più bassa. Con un altro adapter le rotte SSR restano fuori, dichiarate, e il check misura soltanto il CSS.
 
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
