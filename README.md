@@ -114,8 +114,8 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 
 | Action | Passi | Cosa resta nel workflow del progetto |
 |---|---|---|
-| `actions/ci` | checkout, node, install, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
-| `actions/review` | `fallow review` sul diff contro il merge-base | il job informativo |
+| `actions/ci` | checkout, node, install, `astro sync`, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
+| `actions/review` | `astro sync`, poi `fallow review` sul diff contro il merge-base | il job informativo |
 | `actions/deploy` | risoluzione del tag, gate, `vercel pull`, `build`, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
 
@@ -135,6 +135,8 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
 ```
+
+`astro sync` genera i tipi di `.astro/`, che fallow pretende e un checkout pulito non ha; se fallisce il passo lo segnala con un avviso e il job prosegue.
 
 I tre segreti sono input obbligatori e l'action li mette nell'`env` dei soli tre passi che chiamano `vercel`. Nell'`env` del job li vedrebbero anche `pnpm install` e gli script di installazione di ogni dipendenza, che girano codice di terzi con in mano un token di deploy.
 
