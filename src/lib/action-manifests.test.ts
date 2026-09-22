@@ -15,6 +15,18 @@ const NO_EXPRESSIONS = '`description` non ammette espressioni: il runner la valu
 
 const invalidContext = (name: string) => `\`${name}\` non è un contesto di una composite action: passalo come input`
 
+describe('la sintassi YAML', () => {
+  it('rifiuta un valore con due punti e spazio fuori dagli apici, come fa il runner', () => {
+    const source = 'runs:\n  steps:\n    - name: prova (informativa: non blocca)\n'
+
+    expect(one(source)).toEqual(at(3, expect.stringMatching(/^non è YAML valido: /)))
+  })
+
+  it('accetta lo stesso valore fra apici', () => {
+    expect(one("runs:\n  steps:\n    - name: 'prova (informativa: non blocca)'\n")).toEqual([])
+  })
+})
+
 describe('le description', () => {
   it('non possono portare espressioni, perché il runner le valuta', () => {
     const line = `    description: 'Token Vercel — ${expression('secrets.VERCEL_TOKEN')}'`
@@ -74,7 +86,7 @@ describe('i manifesti di questo repository', () => {
     ])
   })
 
-  it('si caricano: nessuna espressione dove il runner non la regge', () => {
+  it('si caricano: YAML valido, e nessuna espressione dove il runner non la regge', () => {
     expect(manifestFindings(manifests())).toEqual([])
   })
 })

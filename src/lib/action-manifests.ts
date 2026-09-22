@@ -1,3 +1,5 @@
+import { LineCounter, parseDocument } from 'yaml'
+
 import { type Hit, readLines } from './cli.ts'
 import { isLive } from './workflows.ts'
 
@@ -29,12 +31,21 @@ function lineFindings(text: string): string[] {
   })
 }
 
+function syntaxFindings(source: string): Hit[] {
+  const lineCounter = new LineCounter()
+  return parseDocument(source, { lineCounter, prettyErrors: false }).errors.map(({ message, pos }) => ({
+    line: lineCounter.linePos(pos[0]).line,
+    message: `non è YAML valido: ${message}`,
+  }))
+}
+
 // Il runner valuta le espressioni del manifesto prima di eseguire qualunque passo: un contesto che una
 // composite action non conosce non è un valore vuoto, è un'action che non si carica.
 export function manifestFindings(manifests: readonly Manifest[]): ManifestHit[] {
-  return manifests.flatMap(({ path, source }) =>
-    readLines(source)
+  return manifests.flatMap(({ path, source }) => [
+    ...syntaxFindings(source).map((hit) => ({ path, ...hit })),
+    ...readLines(source)
       .filter(({ text }) => isLive(text))
       .flatMap(({ n, text }) => lineFindings(text).map((message) => ({ path, line: n, message }))),
-  )
+  ])
 }
