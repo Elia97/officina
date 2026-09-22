@@ -19,6 +19,11 @@ runs:
     - run: pnpm install --frozen-lockfile
       shell: bash
 
+    - name: Tipi generati di Astro
+      run: |
+        pnpm exec astro sync || echo "::warning::astro sync non è riuscito: si prosegue senza i tipi generati"
+      shell: bash
+
     - name: 'fallow review (informativa: un verdetto non blocca)'
       run: pnpm exec fallow review --brief
       shell: bash
