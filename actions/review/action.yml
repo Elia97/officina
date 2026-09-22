@@ -19,6 +19,6 @@ runs:
     - run: pnpm install --frozen-lockfile
       shell: bash
 
-    - name: fallow review (informativa: un verdetto non blocca)
+    - name: 'fallow review (informativa: un verdetto non blocca)'
       run: pnpm exec fallow review --brief
       shell: bash
