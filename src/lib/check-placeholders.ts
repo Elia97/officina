@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseEnv } from 'node:util'
 
@@ -16,7 +16,10 @@ const COMMENT_ONLY = /^\s*(?:\/\/|\/\*|\*)/
 const ZERO_POSTAL_CODE = /\bpostalCode:\s*(['"])00000\1/
 const EMPTY_HREF = /\bhref:\s*(['"])#\1/
 
-type EnvHit = Omit<Finding, 'path' | 'severity'>
+type EnvHit = Omit<Finding, 'path'>
+
+// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@59.22.0: `vercel pull` lo scrive al posto del valore di una Sensitive.
+const SENSITIVE = '[SENSITIVE]'
 
 const dictionaries = (): string[] =>
   existsSync(DICTIONARIES)
@@ -58,11 +61,41 @@ export function envFindings(content: string, keys: readonly string[]): EnvHit[] 
   const env = parseEnv(content)
   const lines = readLines(content)
   return keys.flatMap((key): EnvHit[] => {
-    const value = env[key]?.trim() ?? ''
-    const declaration = lines.find(({ text }) => new RegExp(`^\\s*${key}\\s*=`).test(text))
-    const at = declaration ? { line: declaration.n } : {}
-    if (value === '') return [{ ...at, message: `${key} non è impostata: vale il default di astro.config.mjs` }]
-    if (TOKEN.test(value) || DOMAIN.test(value)) return [{ ...at, message: `${key} porta un segnaposto del template` }]
+    const value = env[key]?.trim()
+    const declaration = lines.find(({ text }) => new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=`).test(text))
+    if (value === undefined || declaration === undefined) {
+      const message = `${key} non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs`
+      return [{ severity: 'error', message }]
+    }
+    const hit = (severity: Finding['severity'], message: string): EnvHit[] => [
+      { line: declaration.n, severity, message: `${key} ${message}` },
+    ]
+    if (value === SENSITIVE)
+      return hit(
+        'warning',
+        'è Sensitive su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
+      )
+    if (value === '') return hit('error', 'è vuota: vale il default di astro.config.mjs')
+    if (TOKEN.test(value) || DOMAIN.test(value)) return hit('error', 'porta un segnaposto del template')
     return []
   })
 }
+
+const filesUnder = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return filesUnder(path)
+    return entry.isFile() ? [path] : []
+  })
+
+export const outputFindings = (dir: string): Finding[] =>
+  filesUnder(dir)
+    .filter((path) => readFileSync(path).includes(SENSITIVE))
+    .sort()
+    .map(
+      (path): Finding => ({
+        path,
+        severity: 'error',
+        message: `contiene ${SENSITIVE}, il segnaposto che vercel pull scrive per una variabile Sensitive: la build l'ha incorporato al posto del valore`,
+      }),
+    )

@@ -97,6 +97,9 @@ runs:
         VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
         VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
 
+    - run: pnpm run check:placeholders --output .vercel/output
+      shell: bash
+
     - name: Deploy su Vercel, produzione
       id: deploy
       shell: bash
