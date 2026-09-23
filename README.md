@@ -186,11 +186,18 @@ I sorgenti sono TypeScript, ma il pacchetto pubblica JavaScript: Node toglie i t
 ## Pubblicare
 
 ```sh
-pnpm version <patch|minor|major>   # scrive package.json e crea il tag
+npm pkg set version=X.Y.Z
+git diff                                  # una riga sola: "version" in package.json
+git commit -am "chore(release): X.Y.Z"
+git tag -a vX.Y.Z -m "vX.Y.Z"
 git push --follow-tags
 ```
 
+Il tag va creato **annotato**: `--follow-tags` spinge soltanto i tag annotati, e un tag leggero resta in locale senza nessun errore, quindi il rilascio non parte. È successo con la 0.6.0.
+
 Il resto lo fa `.github/workflows/release.yml`, sul push di un tag `v*`: controlla che il tag corrisponda a `version`, rilancia il gate, la build e il test del tarball, pubblica su npm con trusted publishing (OIDC) e provenance, e crea la release su GitHub con le note generate. Niente `pnpm publish` dal terminale: quello che finisce su npm esce da un tag, e da nient'altro.
+
+Il rilascio è fatto quando lo confermano tre cose: `git ls-remote --tags origin` mostra `vX.Y.Z^{}`, cioè il tag annotato arrivato sul remoto; il workflow «Rilascio» sul tag è verde; `curl -fsS https://registry.npmjs.org/@elia97%2Fofficina/X.Y.Z` risponde con il manifesto della versione. `npm view`, anche con `@X.Y.Z`, passa invece dal documento aggregato del pacchetto, che arriva da una CDN e per qualche minuto dopo la pubblicazione può ancora rispondere 404.
 
 Le action si richiamano per tag, quindi **una versione senza tag non è adottabile**: `doctor` chiede ai progetti la stessa versione del pacchetto installato, e un tag che non esiste non si può scrivere in un workflow.
 
