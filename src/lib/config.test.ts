@@ -73,6 +73,13 @@ describe('la configurazione validata', () => {
     )
   })
 
+  it('legge `features.botId` come gli altri controlli', async () => {
+    expect(await loadConfig(config('{ features: { botId: false } }'))).toEqual({ features: { botId: false } })
+    await expect(loadConfig(config('{ features: { botId: true } }'))).rejects.toThrow(
+      "features.botId: atteso 'required' oppure false, ricevuto un booleano",
+    )
+  })
+
   it('rifiuta una voce sconosciuta: un refuso non deve passare in silenzio', async () => {
     await expect(loadConfig(config("{ sitUrl: 'https://prova.test' }"))).rejects.toThrow('sitUrl: voce sconosciuta')
   })
@@ -99,6 +106,7 @@ describe('isRequired', () => {
     expect(isRequired({ features: {} }, 'analytics')).toBe(true)
     expect(isRequired({ features: { analytics: 'required' } }, 'analytics')).toBe(true)
     expect(isRequired({ features: { analytics: false } }, 'analytics')).toBe(false)
+    expect(isRequired({ features: { botId: false } }, 'botId')).toBe(false)
   })
 })
 

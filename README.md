@@ -50,6 +50,8 @@ Una rotta renderizzata a richiesta non emette HTML. Con l'adapter Vercel, `check
 
 Per Lighthouse un sito SSR si misura con `check lighthouse <url>`, sulla produzione o su un'anteprima: al posto del server del progetto visita quell'indirizzo, ed è l'unico modo di avere numeri di produzione. `--local` serve i file statici della build, quindi su un sito renderizzato a richiesta si ferma e lo dice, invece di misurare dei 404. Un'anteprima Vercel con la Deployment Protection risponde con la pagina di accesso, e il check non la può misurare: serve la produzione o un'anteprima non protetta. La porta del server locale segue `LH_PORT` sia con `--listen` sia con `--port`.
 
+Lo smoke legge gli header di sicurezza sulla pagina a cui arriva la radice. Se `/` è un redirect sulla stessa origine — il 302 di lingua che Astro emette con `i18n.routing.redirectToDefaultLocale`, per esempio — li cerca sulla destinazione, perché il redirect non porta la CSP delle pagine renderizzate, e il nome del controllo dice dove li ha letti: `header content-security-policy su /it`. Un redirect verso un'altra origine, o senza `location`, è un fallimento. Anche l'attesa che l'alias di produzione punti al deployment nuovo conta un 3xx come una risposta.
+
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
 ```ts
@@ -66,7 +68,7 @@ export default defineConfig({
   icons: { background: SITE.themeColor.light },
   bundle: { budgets: [motion], cssMaxGzip: 14 * 1024 },
   smoke: { checks: [...DEFAULT_CHECKS, checkLanguageRedirect] },
-  features: { analytics: 'required', roadmap: false },
+  features: { analytics: 'required', roadmap: false, botId: 'required' },
   routes: { representatives: { '/blog/[slug]': '/blog/ciao-mondo' } },
 })
 ```
@@ -79,11 +81,11 @@ La radice del pacchetto esporta `defineConfig` e i tipi; i pezzi del motore stan
 | `@elia97/officina/bundle` | `CSS_BUDGET_GZIP` |
 | `@elia97/officina/icons` | `ICON_SPECS` |
 
-`siteUrl` serve a `check smoke` e `icons.background` a `gen icons`. I budget del progetto vengono prima del default di 20 KB, nell'ordine in cui sono scritti; `smoke.checks` sostituisce la lista del pacchetto, quindi chi non ha BotID la ricompone senza `checkBotIdChallenge`; `smoke.securityHeaders` e `smoke.nonHtmlRoutes` sostituiscono `SECURITY_HEADERS` e `NON_HTML_ROUTES`.
+`siteUrl` serve a `check smoke` e `icons.background` a `gen icons`. I budget del progetto vengono prima del default di 20 KB, nell'ordine in cui sono scritti; `smoke.checks` sostituisce la lista del pacchetto, quindi chi ne toglie un controllo la ricompone da `DEFAULT_CHECKS`; `smoke.securityHeaders` e `smoke.nonHtmlRoutes` sostituiscono `SECURITY_HEADERS` e `NON_HTML_ROUTES`.
 
-`features` dice quali controlli il progetto pretende: `'required'` fa fallire il gate quando ciò che deve guardare non c'è, `false` lo spegne dicendolo. Una voce non dichiarata vale `'required'`, e `doctor` la segnala: un gate che esce 0 su un container GTM che non esiste non afferma niente. `routes.representatives` dà a ogni pattern dinamico di `src/pages` un percorso vero, e da lì smoke e Lighthouse guardano anche quelle pagine.
+`features` dice quali controlli il progetto pretende: `'required'` fa fallire il gate quando ciò che deve guardare non c'è, `false` lo spegne dicendolo. Per BotID è `features.botId`: con `false` lo smoke salta la challenge e lo scrive nell'uscita, anche dentro una lista di `smoke.checks` che la contiene. Una voce non dichiarata vale `'required'`, e `doctor` la segnala: un gate che esce 0 su un container GTM che non esiste non afferma niente. `routes.representatives` dà a ogni pattern dinamico di `src/pages` un percorso vero, e da lì smoke e Lighthouse guardano anche quelle pagine.
 
-`features.generators` ha un valore in più delle altre due, perché non tutti i siti in produzione nascono dallo scaffold: `'required'` è il comportamento di sempre; `false` spegne i generatori del pacchetto, e `doctor` smette di chiedere i punti di aggancio e gli ancoraggi invece di pretendere file che nessun codice di quel sito userebbe; `'project'` fa lo stesso ma lascia vivi i generatori che il progetto scrive in `officina.generators.mjs`, che a quel punto `doctor` pretende. Con `false` o `'project'`, `officina gen section|page|component|collection` si ferma dicendolo, mentre gli script `gen` e `gen:*` restano attesi in `package.json`: meglio un comando che spiega di uno script che manca. `gen icons` non c'entra con i generatori di codice e non cambia.
+`features.generators` ha un valore in più delle altre, perché non tutti i siti in produzione nascono dallo scaffold: `'required'` è il comportamento di sempre; `false` spegne i generatori del pacchetto, e `doctor` smette di chiedere i punti di aggancio e gli ancoraggi invece di pretendere file che nessun codice di quel sito userebbe; `'project'` fa lo stesso ma lascia vivi i generatori che il progetto scrive in `officina.generators.mjs`, che a quel punto `doctor` pretende. Con `false` o `'project'`, `officina gen section|page|component|collection` si ferma dicendolo, mentre gli script `gen` e `gen:*` restano attesi in `package.json`: meglio un comando che spiega di uno script che manca. `gen icons` non c'entra con i generatori di codice e non cambia.
 
 `placeholders` dice a `check placeholders` cosa guardare: `sources` sono i file da scandire, `contactEnvKeys` le variabili che `--env` pretende. Una lista dichiarata **sostituisce** quella del pacchetto, dizionari compresi: senza dichiarazione i sorgenti sono `src/lib/site.ts`, `src/lib/company.ts` e i dizionari di `src/i18n/strings`, quando la cartella esiste. Serve ai progetti che non nascono dallo scaffold: se partita IVA, recapiti e destinatario dei form stanno nel contenuto invece che in un modulo, i sorgenti del template non sono i suoi, e crearli per far passare il gate terrebbe gli stessi dati in due sedi. Un sorgente elencato che non esiste è un ritrovamento con il suo percorso, non un errore che ferma il comando.
 

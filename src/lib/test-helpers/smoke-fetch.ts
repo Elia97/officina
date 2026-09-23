@@ -24,6 +24,7 @@ export const context = (get: Fetcher, baseUrl = SITE_URL): SmokeContext => ({
   baseUrl,
   siteUrl: SITE_URL,
   securityHeaders: SECURITY_HEADERS,
+  botIdRequired: true,
 })
 
 export const secureHeaders = (): Record<string, string> =>

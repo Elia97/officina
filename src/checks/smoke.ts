@@ -4,7 +4,7 @@
 import process from 'node:process'
 
 import { missingInput } from '../lib/cli.ts'
-import { loadConfig } from '../lib/config.ts'
+import { isRequired, loadConfig } from '../lib/config.ts'
 import { expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
 import {
   type CheckResult,
@@ -32,7 +32,8 @@ function printFailures(failures: readonly CheckResult[]): void {
 }
 
 export async function main(args: string[] = []): Promise<number> {
-  const { siteUrl, smoke = {}, routes = {} } = await loadConfig(process.cwd())
+  const config = await loadConfig(process.cwd())
+  const { siteUrl, smoke = {}, routes = {} } = config
   const [url] = args
 
   if (siteUrl === undefined) {
@@ -53,6 +54,7 @@ export async function main(args: string[] = []): Promise<number> {
     baseUrl,
     siteUrl,
     securityHeaders: smoke.securityHeaders ?? SECURITY_HEADERS,
+    botIdRequired: isRequired(config, 'botId'),
   }
   if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return 1
 

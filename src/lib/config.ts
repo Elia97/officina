@@ -24,13 +24,18 @@ export interface OfficinaConfig {
   }
   analytics?: { linkTracking?: string }
   /** Quali controlli il progetto pretende. Una voce non dichiarata vale `'required'`. */
-  features?: { analytics?: FeatureSetting; roadmap?: FeatureSetting; generators?: GeneratorsSetting }
+  features?: {
+    analytics?: FeatureSetting
+    roadmap?: FeatureSetting
+    generators?: GeneratorsSetting
+    botId?: FeatureSetting
+  }
   placeholders?: { sources?: readonly string[]; contactEnvKeys?: readonly string[] }
   /** Per ogni pattern dinamico di `src/pages`, un percorso vero che smoke e Lighthouse visitano. */
   routes?: { representatives?: Representatives }
 }
 
-export const FEATURES = ['analytics', 'roadmap', 'generators'] as const
+export const FEATURES = ['analytics', 'roadmap', 'generators', 'botId'] as const
 export type FeatureName = (typeof FEATURES)[number]
 
 /** Un controllo si spegne solo scrivendolo: il silenzio vale `'required'`. */
@@ -55,7 +60,7 @@ const SHAPE = aShape({
     checks: anArrayOf(aFunction),
   }),
   analytics: aShape({ linkTracking: aString }),
-  features: aShape({ analytics: feature, roadmap: feature, generators }),
+  features: aShape({ analytics: feature, roadmap: feature, generators, botId: feature }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
   routes: aShape({ representatives: aRecordOf(aString) }),
 })

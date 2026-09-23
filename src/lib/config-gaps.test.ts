@@ -8,7 +8,7 @@ const messages = (gaps: { message: string }[]) => gaps.map(({ message }) => mess
 const complete: OfficinaConfig = {
   siteUrl: 'https://prova.test',
   icons: { background: '#fafafa' },
-  features: { analytics: 'required', roadmap: false, generators: 'required' },
+  features: { analytics: 'required', roadmap: false, generators: 'required', botId: 'required' },
 }
 
 describe('configGaps', () => {
@@ -30,13 +30,14 @@ describe('configGaps', () => {
       "`features.analytics` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
       "`features.roadmap` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
       "`features.generators` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
+      "`features.botId` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
     ])
   })
 
   it('boccia un siteUrl che non è un URL, o che porta la barra finale', () => {
     const rest = {
       icons: { background: '#fafafa' },
-      features: { analytics: 'required', roadmap: false, generators: false },
+      features: { analytics: 'required', roadmap: false, generators: false, botId: false },
     } as const
 
     expect(messages(configGaps({ siteUrl: 'prova.test', ...rest }))).toEqual(['`siteUrl` non è un URL: `prova.test`'])

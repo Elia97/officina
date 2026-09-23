@@ -13,6 +13,7 @@ export interface SmokeContext {
   baseUrl: string
   siteUrl: string
   securityHeaders: Record<string, string | null>
+  botIdRequired: boolean
 }
 
 export type SmokeCheck = (context: SmokeContext, pages: readonly VerifiedRoute[]) => Promise<CheckResult[]>
@@ -42,6 +43,10 @@ export const SECURITY_HEADERS: Record<string, string | null> = {
 /** Deve corrispondere al `source` del rewrite in vercel.json. */
 export const BOTID_CHALLENGE = '/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39-8ed7-437e-a3be-862e0f06eea3/a-4-a/c.js'
 
+const isRedirect = (status: number) => status >= 300 && status < 400
+
+const MAX_REDIRECTS = 5
+
 /** L'alias di produzione di Vercel impiega un attimo a puntare al deployment appena caricato. */
 export async function waitForAlias(
   { get, baseUrl }: SmokeContext,
@@ -50,9 +55,26 @@ export async function waitForAlias(
 ): Promise<void> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      if ((await get(baseUrl)).ok) return
+      const response = await get(baseUrl)
+      if (response.ok || isRedirect(response.status)) return
     } catch {}
     if (attempt < attempts) await sleep(attempt * 2000)
+  }
+}
+
+/** La radice può essere un redirect, come il 302 di lingua di Astro, che non porta la CSP delle pagine renderizzate. */
+async function landingPage(get: Fetcher, baseUrl: string): Promise<{ url: string; response: SmokeResponse }> {
+  const { origin } = new URL(baseUrl)
+  let url = baseUrl
+  for (let hops = 0; ; hops++) {
+    const response = await get(url)
+    if (!isRedirect(response.status)) return { url, response }
+    if (hops === MAX_REDIRECTS) throw new Error(`più di ${MAX_REDIRECTS} redirect a partire da ${baseUrl}`)
+    const location = response.headers.get('location')
+    if (location === null) throw new Error(`${url} risponde ${response.status} senza location`)
+    const next = new URL(location, url)
+    if (next.origin !== origin) throw new Error(`${url} rimanda a ${next.href}, fuori da ${origin}`)
+    url = next.href
   }
 }
 
@@ -78,15 +100,17 @@ export async function checkPages(
 }
 
 export async function checkSecurityHeaders({ get, baseUrl, securityHeaders }: SmokeContext): Promise<CheckResult[]> {
-  let response: SmokeResponse
+  let landing: { url: string; response: SmokeResponse }
   try {
-    response = await get(baseUrl)
+    landing = await landingPage(get, baseUrl)
   } catch (error) {
     return [fail('header di sicurezza', messageOf(error))]
   }
+  const { url, response } = landing
+  const where = url === baseUrl ? '' : ` su ${new URL(url).pathname}`
 
   const results = Object.entries(securityHeaders).map(([header, expected]) => {
-    const check = `header ${header}`
+    const check = `header ${header}${where}`
     const value = response.headers.get(header)
     if (value === null) return fail(check, 'assente')
     if (expected !== null && value !== expected) return fail(check, `atteso "${expected}", ricevuto "${value}"`)
@@ -96,12 +120,13 @@ export async function checkSecurityHeaders({ get, baseUrl, securityHeaders }: Sm
   // Il noindex `has: host = *.vercel.app` di vercel.json applicato al dominio vero farebbe sparire il sito da ogni indice.
   const check = 'nessun x-robots-tag sull’host di produzione'
   const robots = response.headers.get('x-robots-tag')
-  results.push(robots === null ? pass(check) : fail(check, `presente su ${baseUrl}: "${robots}"`))
+  results.push(robots === null ? pass(check) : fail(check, `presente su ${url}: "${robots}"`))
   return results
 }
 
-export async function checkBotIdChallenge({ get, baseUrl }: SmokeContext): Promise<CheckResult[]> {
+export async function checkBotIdChallenge({ get, baseUrl, botIdRequired }: SmokeContext): Promise<CheckResult[]> {
   const check = 'challenge di BotID servita dalla stessa origine'
+  if (!botIdRequired) return [skip(check, 'spento da `features.botId: false`')]
   try {
     const response = await get(`${baseUrl}${BOTID_CHALLENGE}`)
     if (response.status !== 200) return [fail(check, `atteso 200 dal rewrite, ricevuto ${response.status}`)]
