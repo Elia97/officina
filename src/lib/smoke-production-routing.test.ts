@@ -30,6 +30,14 @@ describe('checkBotIdChallenge', () => {
 
     expect(result).toMatchObject({ status: 'fail', detail: 'EAI_AGAIN' })
   })
+  it('skips without a request when the project declares `features.botId: false`', async () => {
+    const get = vi.fn(always({}))
+
+    const [result] = await checkBotIdChallenge({ ...context(get), botIdRequired: false })
+
+    expect(result).toMatchObject({ status: 'skip', detail: 'spento da `features.botId: false`' })
+    expect(get).not.toHaveBeenCalled()
+  })
 })
 
 describe('checkCanonicalHost', () => {
