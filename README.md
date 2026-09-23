@@ -89,6 +89,8 @@ La radice del pacchetto esporta `defineConfig` e i tipi; i pezzi del motore stan
 
 `placeholders` dice a `check placeholders` cosa guardare: `sources` sono i file da scandire, `contactEnvKeys` le variabili che `--env` pretende. Una lista dichiarata **sostituisce** quella del pacchetto, dizionari compresi: senza dichiarazione i sorgenti sono `src/lib/site.ts`, `src/lib/company.ts` e i dizionari di `src/i18n/strings`, quando la cartella esiste. Serve ai progetti che non nascono dallo scaffold: se partita IVA, recapiti e destinatario dei form stanno nel contenuto invece che in un modulo, i sorgenti del template non sono i suoi, e crearli per far passare il gate terrebbe gli stessi dati in due sedi. Un sorgente elencato che non esiste è un ritrovamento con il suo percorso, non un errore che ferma il comando.
 
+Nel deploy `check placeholders` gira due volte sui file di Vercel. Con `--env .vercel/.env.production.local`, dopo `vercel pull`, distingue una chiave che su Vercel non esiste, una vuota e una che porta un segnaposto del template, tutte e tre errori, da una variabile **Sensitive**: `vercel pull` non ne scarica il valore e scrive al suo posto `[SENSITIVE]`, quindi il check lo dice con un avviso, che non ferma il deploy, invece di darla per verificata. Il segnaposto però diventa un problema se la build legge la variabile, per esempio una variabile di `astro:env` con `access: 'public'`, che Astro incorpora nel codice: con `--output .vercel/output`, dopo `vercel build`, il check cerca `[SENSITIVE]` nei file della build e ferma il deploy nominandoli. Una variabile che la build legge va tenuta Encrypted su Vercel, o letta a runtime.
+
 Il file lo carica Node, che fuori da `node_modules` toglie i tipi da sé: niente `enum`, niente alias `@/`. Due file `officina.config.*` insieme sono un errore, come un file senza default export; il resto lo valida `loadConfig` a runtime, nominando il percorso della voce sbagliata — `bundle.cssMaxGzip: atteso un numero, ricevuto una stringa` — e una voce sconosciuta, perché `sitUrl` al posto di `siteUrl` non deve passare in silenzio.
 
 `sharp` è una dipendenza facoltativa del progetto, non del pacchetto: serve solo a `gen icons`, che senza lo dice ed esce 1. Un ingresso che manca — il favicon, `.lighthouserc.json`, `src/pages`, la build in `dist/client` — è sempre una riga che nomina il file e dice a cosa serve, mai uno stack trace. `@biomejs/biome` invece è una peer dependency con l'intervallo che il preset regge, e `doctor` confronta la versione del progetto con quello.
@@ -118,7 +120,7 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 |---|---|---|
 | `actions/ci` | checkout, node, install, `astro sync`, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
 | `actions/review` | `astro sync`, poi `fallow review` sul diff contro il merge-base | il job informativo |
-| `actions/deploy` | risoluzione del tag, gate, `vercel pull`, `build`, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
+| `actions/deploy` | risoluzione del tag, gate, `vercel pull`, `build`, controllo della build, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
 
 ```yaml

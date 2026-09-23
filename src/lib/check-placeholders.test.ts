@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { useFixtureProject } from '../test-fixture.ts'
@@ -85,22 +87,38 @@ describe('envFindings', () => {
 
   it('segnala una chiave assente, che ricade sul default di astro.config.mjs', () => {
     expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''), DEFAULT_KEYS)).toEqual([
-      { message: 'CONTACT_TO_EMAIL non è impostata: vale il default di astro.config.mjs' },
+      {
+        severity: 'error',
+        message:
+          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs",
+      },
     ])
   })
 
   it('segnala una chiave vuota con la sua riga', () => {
     expect(envFindings(complete.replace('"Acme"', '""'), DEFAULT_KEYS)).toEqual([
-      { line: 2, message: 'CONTACT_FROM_NAME non è impostata: vale il default di astro.config.mjs' },
+      { line: 2, severity: 'error', message: 'CONTACT_FROM_NAME è vuota: vale il default di astro.config.mjs' },
+    ])
+  })
+
+  it('trova la riga anche nella forma con export, che parseEnv accetta', () => {
+    expect(
+      envFindings(complete.replace('CONTACT_FROM_NAME="Acme"', 'export CONTACT_FROM_NAME=""'), DEFAULT_KEYS),
+    ).toEqual([
+      { line: 2, severity: 'error', message: 'CONTACT_FROM_NAME è vuota: vale il default di astro.config.mjs' },
     ])
   })
 
   it.each([
-    ['"Acme"', '"<PROJECT_NAME>"', { line: 2, message: 'CONTACT_FROM_NAME porta un segnaposto del template' }],
+    [
+      '"Acme"',
+      '"<PROJECT_NAME>"',
+      { line: 2, severity: 'error', message: 'CONTACT_FROM_NAME porta un segnaposto del template' },
+    ],
     [
       '"sales@acme.test"',
       '"info@example.com"',
-      { line: 3, message: 'CONTACT_TO_EMAIL porta un segnaposto del template' },
+      { line: 3, severity: 'error', message: 'CONTACT_TO_EMAIL porta un segnaposto del template' },
     ],
   ])('segnala il segnaposto %s → %s senza stamparne il valore', (from, to, finding) => {
     expect(envFindings(complete.replace(from, to), DEFAULT_KEYS)).toEqual([finding])
@@ -110,5 +128,25 @@ describe('envFindings', () => {
     const keys = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME']
 
     expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''), keys)).toEqual([])
+  })
+})
+
+describe('envFindings sul file che scrive vercel pull', () => {
+  it('nel file di vercel@59.22.0 pull distingue la Sensitive, che non si verifica, dalla chiave che manca', () => {
+    const pulled = readFileSync(new URL('./test-helpers/vercel-pull-59.22.0.env', import.meta.url), 'utf8')
+
+    expect(envFindings(pulled, DEFAULT_KEYS)).toEqual([
+      {
+        line: 2,
+        severity: 'warning',
+        message:
+          'CONTACT_FROM_EMAIL è Sensitive su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
+      },
+      {
+        severity: 'error',
+        message:
+          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs",
+      },
+    ])
   })
 })

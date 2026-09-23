@@ -86,3 +86,44 @@ describe('un sorgente che non esiste', () => {
     expect(lines.join('\n')).toContain('dominio segnaposto example.com')
   })
 })
+
+describe('una variabile Sensitive nel file di vercel pull', () => {
+  it('con --env è un avviso che non ferma il deploy', async () => {
+    const root = project({
+      'officina.config.mjs': config("{ placeholders: { contactEnvKeys: ['CONTACT_FROM_EMAIL'] } }"),
+      '.env.production.local': '# Created by Vercel CLI\nCONTACT_FROM_EMAIL="[SENSITIVE]"\n',
+    })
+
+    const { exitCode, lines } = await run(root, ['--env', '.env.production.local'])
+
+    expect(exitCode).toBe(0)
+    expect(lines.join('\n')).toContain('CONTACT_FROM_EMAIL è Sensitive su Vercel')
+    expect(lines.join('\n')).not.toContain('Da sostituire')
+  })
+
+  it('con --output ferma il deploy se la build ha incorporato il segnaposto', async () => {
+    const root = project({ '.vercel/output/static/_astro/page.js': 'const from="[SENSITIVE]";' })
+
+    const { exitCode, lines } = await run(root, ['--output', '.vercel/output'])
+
+    expect(exitCode).toBe(1)
+    expect(lines.join('\n')).toContain('.vercel/output/static/_astro/page.js: contiene [SENSITIVE]')
+    expect(lines.join('\n')).toContain('portala a Encrypted, o leggila a runtime')
+  })
+
+  it('con --output esce 0 su una build pulita', async () => {
+    const root = project({ '.vercel/output/static/index.html': '<p>Acme</p>' })
+
+    const { exitCode, lines } = await run(root, ['--output', '.vercel/output'])
+
+    expect(exitCode).toBe(0)
+    expect(lines.join('\n')).toContain('Nessuna variabile Sensitive entrata nella build.')
+  })
+
+  it('con --output nomina la cartella della build quando manca', async () => {
+    const { exitCode, lines } = await run(project({}), ['--output', '.vercel/output'])
+
+    expect(exitCode).toBe(1)
+    expect(lines.join('\n')).toContain('.vercel/output: cartella della build assente: la scrive vercel build')
+  })
+})
