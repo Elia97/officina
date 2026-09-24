@@ -169,6 +169,8 @@ Le altre sezioni misurano che il progetto e il pacchetto si muovano insieme:
 
 `package.json`, `.claude/settings.json`, `biome.json` e `.mcp.json` si leggono come JSON, non cercandoci dentro delle stringhe: `"hooks"` in un valore qualunque non è un blocco `hooks`. I workflow restano una ricerca testuale — non c'è un parser YAML nel pacchetto — ma una riga commentata non soddisfa nessun controllo.
 
+**Un requisito nuovo nasce come avviso.** Quando `doctor` impara a chiedere una cosa nuova, la mancanza è un `warning` nella versione che la introduce e diventa un `error` dalla successiva. `doctor` gira dentro `pnpm run ci` senza `--strict`, quindi la PR di Dependabot che porta la versione nuova passa, e il progetto ha una versione di tempo per adeguarsi.
+
 ## Sviluppo
 
 ```sh
@@ -184,6 +186,8 @@ pnpm test:pack   # pnpm pack, poi il tarball installato in un progetto vuoto
 I sorgenti sono TypeScript, ma il pacchetto pubblica JavaScript: Node toglie i tipi al volo solo fuori da `node_modules`. I test con `--diff` hanno bisogno di almeno un commit su `main`.
 
 ## Pubblicare
+
+**Una release a settimana**, salvo una rottura che ferma un progetto: le correzioni si accumulano su `main` ed escono insieme. Ogni release è un aggiornamento da portare in ogni progetto e nel template, e il gruppo `officina` di Dependabot lo propone una volta a settimana: rilasciare più spesso non lo fa arrivare prima, moltiplica soltanto le PR da seguire.
 
 ```sh
 npm pkg set version=X.Y.Z
