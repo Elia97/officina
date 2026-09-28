@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   BIOME_PRESET,
+  BIOME_SCHEMA,
   CI_STEPS,
   dependencyGaps,
   EXPECTED_SCRIPTS,
@@ -149,5 +150,23 @@ describe('presetGaps', () => {
     })
 
     expect(presetGaps(project).map(({ path }) => path)).toEqual(['lefthook.yml'])
+  })
+})
+
+describe('presetGaps e lo $schema di Biome', () => {
+  const withSchema = (schema: string) =>
+    files([], {
+      'biome.json': `{ "$schema": "${schema}", "extends": ["${BIOME_PRESET}"] }`,
+      'lefthook.yml': `extends:\n  - ${LEFTHOOK_PRESET}\n`,
+    })
+
+  it("avvisa di uno schema con la versione nell'URL, e dice dove puntarlo", () => {
+    expect(presetGaps(withSchema('https://biomejs.dev/schemas/2.5.10/schema.json'))).toEqual([
+      { path: 'biome.json', message: expect.stringContaining(BIOME_SCHEMA), severity: 'warning' },
+    ])
+  })
+
+  it('non chiede niente con lo schema del pacchetto installato', () => {
+    expect(presetGaps(withSchema(BIOME_SCHEMA))).toEqual([])
   })
 })

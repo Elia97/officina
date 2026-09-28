@@ -1,9 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Quello che un progetto deve avere perché i generatori scrivano codice che compila: i moduli che
-// il codice generato importa, i punti in cui i generatori iniettano, e ciò che package.json deve
-// dichiarare perché quel codice si installi e superi il post-gen.
+// Ciò che serve perché il codice dei generatori compili: i moduli che importa, i punti in cui i
+// generatori iniettano, e le voci di package.json con cui si installa e supera il post-gen.
 type Requirement =
   | { kind: 'file'; path: string; reason: string }
   | { kind: 'directory'; path: string; extension: string; reason: string }
@@ -74,6 +73,8 @@ export const CONTRACT: Requirement[] = [
 export interface ContractGap {
   path: string
   message: string
+  // README, § doctor: un requisito nuovo nasce come avviso; senza, la mancanza resta un errore.
+  severity?: 'warning'
 }
 
 interface Manifest {

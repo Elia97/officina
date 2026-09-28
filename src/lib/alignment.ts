@@ -152,13 +152,27 @@ export function leftoverGaps(files: ProjectFiles): ContractGap[] {
 }
 
 export const BIOME_PRESET = '@elia97/officina/biome'
+export const BIOME_SCHEMA = './node_modules/@biomejs/biome/configuration_schema.json'
 export const LEFTHOOK_PRESET = 'node_modules/@elia97/officina/presets/lefthook.yml'
+
+// Dependabot aggiorna @biomejs/biome ma non questo URL: con lo schema versionato `biome ci` stampa
+// «The configuration schema version does not match the CLI version»; con quello del pacchetto no.
+const VERSIONED_SCHEMA = /^https:\/\/biomejs\.dev\/schemas\/[^/]+\/schema\.json$/
 
 export function presetGaps(files: ProjectFiles): ContractGap[] {
   const gaps: ContractGap[] = []
-  const extended = readJson(files, 'biome.json')?.extends
+  const biome = readJson(files, 'biome.json')
+  const extended = biome?.extends
   if (!(Array.isArray(extended) && extended.includes(BIOME_PRESET))) {
     gaps.push({ path: 'biome.json', message: `non estende \`${BIOME_PRESET}\`` })
+  }
+  const schema = biome?.$schema
+  if (typeof schema === 'string' && VERSIONED_SCHEMA.test(schema)) {
+    gaps.push({
+      path: 'biome.json',
+      message: `\`$schema\` porta la versione di Biome, che Dependabot non aggiorna: va su \`${BIOME_SCHEMA}\``,
+      severity: 'warning',
+    })
   }
   if (!mentions(files.read('lefthook.yml'), LEFTHOOK_PRESET)) {
     gaps.push({ path: 'lefthook.yml', message: `non estende \`${LEFTHOOK_PRESET}\`` })
