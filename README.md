@@ -103,7 +103,7 @@ Le regole che valgono per tutti i progetti stanno nel pacchetto; il progetto est
 
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["@elia97/officina/biome"]
 }
 ```
@@ -113,6 +113,8 @@ Le regole che valgono per tutti i progetti stanno nel pacchetto; il progetto est
 extends:
   - node_modules/@elia97/officina/presets/lefthook.yml
 ```
+
+`$schema` punta allo schema che il pacchetto di Biome installa, che è sempre quello della CLI. L'URL di biomejs.dev porta invece la versione, che Dependabot non aggiorna quando alza `@biomejs/biome`, e da lì Biome segnala lo scarto a ogni esecuzione: `doctor` lo dice con un avviso.
 
 ## Action per i workflow
 

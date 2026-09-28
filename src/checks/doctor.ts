@@ -122,7 +122,7 @@ export async function main(): Promise<number> {
     }
     const { title, gaps } = section
     console.log(gaps.length === 0 ? `  ✓ ${title}` : `  ${title}: ${gaps.length}`)
-    const sectionFindings = gaps.map((gap): Finding => ({ ...gap, severity: 'error' }))
+    const sectionFindings = gaps.map((gap): Finding => ({ ...gap, severity: gap.severity ?? 'error' }))
     printFindings(sectionFindings, cliOptions([]).format)
     findings.push(...sectionFindings)
   }
