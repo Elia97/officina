@@ -36,6 +36,8 @@ pnpm add -D @elia97/officina
 
 I gate leggono dalla cartella corrente, che deve essere la radice del repository. Opzioni comuni dei gate sui sorgenti: `--diff`, `--base <ref>`, `--head <ref>`, `--strict`, `--format text|github`.
 
+`check language` vuole in italiano i commenti del codice e i Markdown di documentazione. Lascia fuori per intero ciò che non è documentazione del progetto: i dizionari di `src/i18n/strings/` e i Markdown sotto `src/content/`, che sono copy nelle lingue del sito; le fonti del cliente in `docs/sources/`; i `CHANGELOG.md`, generati in inglese. Un file YAML di `src/content/` invece è codice, e i suoi commenti si controllano come altrove.
+
 ## Verifiche di build e di produzione
 
 | Comando | Cosa guarda | Da dove prende le rotte |

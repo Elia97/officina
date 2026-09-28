@@ -4,8 +4,9 @@ import { ENGLISH, ITALIAN } from './language-words.ts'
 
 const CODE =
   /^(?:(?:src|scripts|test|\.claude\/hooks|\.github)\/.*|[^/]+)\.(?:ts|tsx|astro|mjs|cjs|js|css|ya?ml|jsonc)$/
-// Fuori le fonti del cliente (materiale altrui) e i changelog, generati in inglese.
-const DOCS = /^(?!docs\/sources\/)(?!(?:.*\/)?CHANGELOG\.md$).*\.md$/
+// Fuori le fonti del cliente (materiale altrui) e i changelog, generati in inglese; fuori anche
+// src/content/, della stessa natura dei dizionari in LOCALIZED.
+const DOCS = /^(?!docs\/sources\/|src\/content\/)(?!(?:.*\/)?CHANGELOG\.md$).*\.md$/
 // I dizionari sono copy per l'utente nelle lingue del sito: en e de leggono inglese e tedesco
 // per definizione, ed è il solo posto sotto CODE dove non deve leggersi italiano.
 const LOCALIZED = /^src\/i18n\/strings\//

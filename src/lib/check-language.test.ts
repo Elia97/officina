@@ -11,6 +11,8 @@ describe('isScanned', () => {
     ['docs/sources/cliente.md', false],
     ['CHANGELOG.md', false],
     ['src/i18n/strings/en.ts', false],
+    ['src/content/news/en/articolo.md', false],
+    ['src/content/pages/en/chi-siamo.yml', true],
     ['src/pages/index.astro', true],
   ])('%s → %s', (path, expected) => {
     expect(isScanned(path)).toBe(expected)
