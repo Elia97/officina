@@ -29,7 +29,7 @@ type RawManifest = {
 }
 
 const MANIFEST_CALL = 'deserializeManifest({'
-const ASSET = /^_astro\/([^/]+\.js)$/
+const ASSET = /^(?:.*\/)?_astro\/([^/?#]+\.js)(?:[?#].*)?$/
 const STYLESHEET = /^(?:.*\/)?_astro\/([^?#]+\.css)(?:[?#].*)?$/
 const RENDERER_RUNTIME = /^@astrojs\/[\w-]+\/client\.js$/
 const COMPONENT_SCRIPT = '?astro&type=script'
