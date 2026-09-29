@@ -4,8 +4,15 @@ import { type ServerFile, ssrRoutes } from './vercel-build.ts'
 
 type RouteData = { type?: string; origin?: string; prerender?: boolean; route?: unknown; component?: unknown }
 
-const page = (route: string, component: string, extra: RouteData = {}, scripts: object[] = []) => ({
+const page = (
+  route: string,
+  component: string,
+  extra: RouteData = {},
+  scripts: object[] = [],
+  styles: object[] = [],
+) => ({
   scripts,
+  styles,
   routeData: { type: 'page', origin: 'project', prerender: false, route, component, ...extra },
 })
 
@@ -91,7 +98,7 @@ describe('le rotte misurate', () => {
   })
 
   it('portano le isole e gli script che i loro chunk server nominano, con il runtime del framework', () => {
-    expect(routesOf([page('/', 'src/pages/index.astro')])).toEqual([
+    expect(routesOf([page('/', 'src/pages/index.astro')])).toMatchObject([
       { route: '/', entries: ['client.D4.js', 'header.B2.js', 'search.A1.js'], unmapped: false, unknownIslands: [] },
     ])
   })
@@ -116,7 +123,7 @@ describe('le rotte misurate', () => {
 
   it('senza un chunk server da seguire restano segnate, invece di misurare meno del vero', () => {
     expect(routesOf([page('/orfana', 'src/pages/orphan.astro')])).toEqual([
-      { route: '/orfana', entries: [], unmapped: true, unknownIslands: [] },
+      { route: '/orfana', entries: [], stylesheets: [], unmapped: true, unknownIslands: [] },
     ])
   })
 
@@ -140,5 +147,30 @@ describe('le rotte misurate', () => {
     ]
 
     expect(ssrRoutes(files)?.[0]?.unknownIslands).toEqual(['@/components/ghost'])
+  })
+})
+
+describe('i fogli di stile delle rotte', () => {
+  it('sono i fogli esterni della rotta, una volta ciascuno, e soltanto quelli', () => {
+    const styles = [
+      { type: 'external', src: '_astro/base.A1.css' },
+      { type: 'inline', content: 'h1{color:red}' },
+      { type: 'external' },
+      { type: 'external', src: '_astro/page.E5.js' },
+      { type: 'external', src: '_astro/base.A1.css?dpl=dpl_123' },
+      { type: 'external', src: 'sub/_astro/extra.B2.css' },
+    ]
+
+    expect(routesOf([page('/', 'src/pages/index.astro', {}, [], styles)])?.[0]?.stylesheets).toEqual([
+      'base.A1.css',
+      'extra.B2.css',
+    ])
+  })
+
+  it('senza il campo styles, o con un valore che non è un elenco, non si conoscono invece di essere zero', () => {
+    const { styles: _, ...unstyled } = page('/', 'src/pages/index.astro')
+
+    expect(routesOf([unstyled])?.[0]?.stylesheets).toBeNull()
+    expect(routesOf([{ ...unstyled, styles: null }])?.[0]?.stylesheets).toBeNull()
   })
 })

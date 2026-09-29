@@ -2,7 +2,7 @@
 // Gate del budget di bundle su dist/client — richiede un `astro build` completato.
 
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import process from 'node:process'
 import { gzipSync } from 'node:zlib'
 
@@ -11,14 +11,14 @@ import {
   budgetFor,
   type Chunk,
   CSS_BUDGET_GZIP,
-  cssBudgetFailure,
   deferredClosure,
-  heaviestStylesheet,
   htmlEntries,
+  htmlStylesheets,
   parseEdges,
   type Stylesheet,
   staticClosure,
 } from '../lib/bundle-budget.ts'
+import { type CssMeasure, measureCss, routeCount } from '../lib/bundle-css.ts'
 import { type PageEntries, readSsr, type SsrReading } from '../lib/bundle-ssr.ts'
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
@@ -40,9 +40,10 @@ type MeasuredPage = { route: string; gzip: number; deferredGzip: number; budget:
 const gz = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`
 
 function readStylesheets(): Stylesheet[] {
-  return readdirSync(ASSETS)
-    .filter((f) => f.endsWith('.css'))
-    .map((file) => ({ file, gzip: gzipSync(readFileSync(join(ASSETS, file))).length }))
+  return filesWithExtension(ASSETS, '.css').map((path) => ({
+    file: relative(ASSETS, path),
+    gzip: gzipSync(readFileSync(path)).length,
+  }))
 }
 
 function readChunks(): Map<string, Chunk> {
@@ -55,10 +56,10 @@ function readChunks(): Map<string, Chunk> {
 }
 
 function htmlPages(): PageEntries[] {
-  return filesWithExtension(DIST, '.html').map((htmlPath) => ({
-    route: routeOf(htmlPath, DIST),
-    entries: htmlEntries(readFileSync(htmlPath, 'utf8')),
-  }))
+  return filesWithExtension(DIST, '.html').map((htmlPath) => {
+    const html = readFileSync(htmlPath, 'utf8')
+    return { route: routeOf(htmlPath, DIST), entries: htmlEntries(html), stylesheets: htmlStylesheets(html) }
+  })
 }
 
 function measurePages(
@@ -113,20 +114,21 @@ function printPages(pages: readonly MeasuredPage[], width: number): void {
   )
 }
 
-function printStylesheets(
-  stylesheets: readonly Stylesheet[],
-  cssMaxGzip: number,
-  failed: boolean,
-  width: number,
-): void {
-  const worst = heaviestStylesheet(stylesheets)
-  console.log(`\nCSS (blocca il rendering: il foglio più pesante che una rotta collega)`)
-  for (const sheet of [...stylesheets].sort((a, b) => b.gzip - a.gzip)) {
-    const mark = sheet === worst && failed ? '  ✗' : ''
-    console.log(
-      `  ${sheet.file.padEnd(width - 2)}   ${gz(sheet.gzip).padStart(9)}   ${gz(cssMaxGzip).padStart(9)}${mark}`,
-    )
+function printCss({ groups }: CssMeasure, cssMaxGzip: number, width: number): void {
+  console.log('\nCSS per rotta (blocca il rendering: gzip dei fogli che la rotta collega)')
+  for (const { stylesheets, gzip, routes } of groups) {
+    const count = routes.length === 0 ? 'da solo' : routeCount(routes.length)
+    const line = `  ${stylesheets.join(' + ').padEnd(width - 2)}   ${gz(gzip).padStart(9)}   ${gz(cssMaxGzip).padStart(9)}   ${count}`
+    console.log(gzip > cssMaxGzip ? `${line}  ✗` : line)
   }
+  if (groups.some(({ routes }) => routes.length === 0))
+    console.log('\nda solo = nessuna rotta misurata collega il foglio: si pesa contro il tetto per conto suo.')
+}
+
+function checkCss(pages: readonly PageEntries[], cssMaxGzip: number, width: number): string[] {
+  const css = measureCss(pages, readStylesheets(), cssMaxGzip, ASSETS)
+  printCss(css, cssMaxGzip, width)
+  return css.failures
 }
 
 function printSsrNote(expected: Expectations, ssr: SsrReading): void {
@@ -145,7 +147,8 @@ export async function main(): Promise<number> {
 
   const html = htmlPages()
   const ssr = readSsr(html.length > 0)
-  const pages = measurePages([...html, ...ssr.pages], readChunks(), bundle.budgets ?? [])
+  const routes = [...html, ...ssr.pages]
+  const pages = measurePages(routes, readChunks(), bundle.budgets ?? [])
   const expected = expectedRoutes(readPageFiles(PAGES), PAGES)
   const measured = pages.map((page) => page.route)
   const failures = ssr.comparesExpectedRoutes ? missingRouteFailures(expected, measured, DIST) : []
@@ -153,11 +156,7 @@ export async function main(): Promise<number> {
 
   const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)
-
-  const stylesheets = readStylesheets()
-  const cssFailure = cssBudgetFailure(stylesheets, cssMaxGzip)
-  if (cssFailure) failures.push(cssFailure)
-  printStylesheets(stylesheets, cssMaxGzip, cssFailure !== null, width)
+  failures.push(...checkCss(routes, cssMaxGzip, width))
   printSsrNote(expected, ssr)
 
   if (failures.length > 0) {

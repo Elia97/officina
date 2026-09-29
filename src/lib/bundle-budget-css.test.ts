@@ -1,45 +1,35 @@
 import { describe, expect, it } from 'vitest'
 
-import { CSS_BUDGET_GZIP, cssBudgetFailure, heaviestStylesheet } from './bundle-budget.ts'
+import { htmlStylesheets } from './bundle-budget.ts'
 
-describe('cssBudgetFailure', () => {
-  const sheet = (file: string, gzip: number) => ({ file, gzip })
+const link = (attributes: string) => `<link ${attributes}>`
 
-  it('passes a stylesheet under the budget, and one exactly at it', () => {
-    expect(cssBudgetFailure([sheet('main.css', CSS_BUDGET_GZIP - 1)])).toBeNull()
-    expect(cssBudgetFailure([sheet('main.css', CSS_BUDGET_GZIP)])).toBeNull()
+describe('htmlStylesheets', () => {
+  it('prende i fogli locali che la pagina collega, una volta ciascuno', () => {
+    const html = [
+      link('rel="stylesheet" href="/_astro/main.css"'),
+      link('rel="stylesheet" href="/_astro/slug.css"'),
+      link('href="/_astro/main.css" rel="stylesheet"'),
+      link('rel="stylesheet" href="https://fonts.example.com/x.css"'),
+    ].join('')
+
+    expect(htmlStylesheets(html).sort()).toEqual(['main.css', 'slug.css'])
   })
 
-  it('has nothing to weigh on a build with no stylesheet at all', () => {
-    expect(cssBudgetFailure([])).toBeNull()
+  it.each([
+    ['sotto una base', 'rel="stylesheet" href="/sub/_astro/main.css"', 'main.css'],
+    ['da un assetsPrefix', 'rel="stylesheet" href="https://cdn.example.com/_astro/main.css"', 'main.css'],
+    ['con la query della skew protection', 'rel="stylesheet" href="/_astro/main.css?dpl=dpl_123"', 'main.css'],
+    ['fra apici singoli', "rel='stylesheet' href='/_astro/main.css'", 'main.css'],
+    ['in una sottocartella di _astro', 'rel="stylesheet" href="/_astro/sub/x.css"', 'sub/x.css'],
+  ])('riconosce il foglio %s', (_, attributes, name) => {
+    expect(htmlStylesheets(link(attributes))).toEqual([name])
   })
 
-  it('weighs the page groups apart, since a route links only one of them', () => {
-    const almost = Math.floor(CSS_BUDGET_GZIP * 0.9)
-
-    expect(cssBudgetFailure([sheet('main.css', almost), sheet('blog.css', almost)])).toBeNull()
-  })
-
-  it('reports the overage and names the sheet that carries it', () => {
-    const failure = cssBudgetFailure([
-      sheet('main.css', CSS_BUDGET_GZIP + 2048),
-      sheet('blog.css', CSS_BUDGET_GZIP - 1),
-    ])
-
-    expect(failure).toContain('main.css')
-    expect(failure).not.toContain('blog.css')
-    expect(failure).toContain('2.0 KB')
-  })
-})
-
-describe('heaviestStylesheet', () => {
-  it('returns null when nothing was emitted', () => {
-    expect(heaviestStylesheet([])).toBeNull()
-  })
-
-  it('keeps the first of two sheets of equal weight', () => {
-    const first = { file: 'a.css', gzip: 100 }
-
-    expect(heaviestStylesheet([first, { file: 'b.css', gzip: 100 }])).toBe(first)
+  it.each([
+    ['un prefetch', 'rel="prefetch" href="/_astro/b.css"'],
+    ['un preload', 'rel="preload" as="style" href="/_astro/b.css"'],
+  ])('non conta %s, che non blocca il rendering', (_, attributes) => {
+    expect(htmlStylesheets(link(attributes))).toEqual([])
   })
 })
