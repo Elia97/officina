@@ -70,6 +70,22 @@ describe('un progetto che tiene i propri dati fuori dai moduli del template', ()
     expect(exitCode).toBe(0)
     expect(lines.join('\n')).not.toContain('CONTACT_TO_EMAIL')
   })
+
+  it('con --env una chiave dichiarata che manca ferma il deploy, senza rimandi allo scaffold', async () => {
+    const root = project({
+      'officina.config.mjs': declared,
+      '.env.production.local': 'CONTACT_FROM_EMAIL="hello@acme.test"\n',
+    })
+
+    const { exitCode, lines } = await run(root, ['--env', '.env.production.local'])
+    const output = lines.join('\n')
+
+    expect(exitCode).toBe(1)
+    expect(output).toContain("CONTACT_FROM_NAME non c'è fra le variabili di produzione su Vercel")
+    expect(output).toContain('`placeholders.contactEnvKeys` in officina.config.ts')
+    expect(output).not.toContain('astro.config.mjs')
+    expect(output).not.toContain('deploy-ops.md')
+  })
 })
 
 describe('un sorgente che non esiste', () => {
@@ -84,6 +100,7 @@ describe('un sorgente che non esiste', () => {
     expect(exitCode).toBe(1)
     expect(lines.join('\n')).toContain('src/lib/assente.ts: sorgente assente')
     expect(lines.join('\n')).toContain('dominio segnaposto example.com')
+    expect(lines.join('\n')).toContain('Da sostituire con i dati del progetto')
   })
 })
 
@@ -98,7 +115,7 @@ describe('una variabile Sensitive nel file di vercel pull', () => {
 
     expect(exitCode).toBe(0)
     expect(lines.join('\n')).toContain('CONTACT_FROM_EMAIL è Sensitive su Vercel')
-    expect(lines.join('\n')).not.toContain('Da sostituire')
+    expect(lines.join('\n')).not.toContain('Da impostare')
   })
 
   it('con --output ferma il deploy se la build ha incorporato il segnaposto', async () => {

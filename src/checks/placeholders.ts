@@ -56,7 +56,8 @@ function scan(env: string | undefined, output: string | undefined, config: Offic
       scope: `ambiente in ${env}`,
       findings: envScan(env, contactEnvKeys(config)),
       clean: 'Nessun segnaposto del template.',
-      advice: 'Da sostituire prima del deploy: docs/guides/deploy-ops.md § Checklist per il go-live',
+      advice:
+        'Da impostare su Vercel, fra le variabili di produzione, prima del deploy: quali pretendere lo dice `placeholders.contactEnvKeys` in officina.config.ts',
     }
   }
   const paths = placeholderSources(config)
@@ -64,7 +65,8 @@ function scan(env: string | undefined, output: string | undefined, config: Offic
     scope: `${paths.length} sorgenti`,
     findings: sourceScan(paths),
     clean: 'Nessun segnaposto del template.',
-    advice: 'Da sostituire prima del deploy: README.md § Cosa tocca il rebranding',
+    advice:
+      'Da sostituire con i dati del progetto prima del deploy: i file da guardare li dice `placeholders.sources` in officina.config.ts',
   }
 }
 

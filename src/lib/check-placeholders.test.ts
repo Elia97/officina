@@ -85,19 +85,23 @@ describe('envFindings', () => {
     expect(envFindings(complete, DEFAULT_KEYS)).toEqual([])
   })
 
-  it('segnala una chiave assente, che ricade sul default di astro.config.mjs', () => {
+  it('segnala una chiave assente fra le variabili di produzione', () => {
     expect(envFindings(complete.replace('CONTACT_TO_EMAIL="sales@acme.test"', ''), DEFAULT_KEYS)).toEqual([
       {
         severity: 'error',
         message:
-          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs",
+          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: il deploy andrebbe online senza il suo valore",
       },
     ])
   })
 
   it('segnala una chiave vuota con la sua riga', () => {
     expect(envFindings(complete.replace('"Acme"', '""'), DEFAULT_KEYS)).toEqual([
-      { line: 2, severity: 'error', message: 'CONTACT_FROM_NAME è vuota: vale il default di astro.config.mjs' },
+      {
+        line: 2,
+        severity: 'error',
+        message: 'CONTACT_FROM_NAME è vuota: il deploy andrebbe online senza il suo valore',
+      },
     ])
   })
 
@@ -105,7 +109,11 @@ describe('envFindings', () => {
     expect(
       envFindings(complete.replace('CONTACT_FROM_NAME="Acme"', 'export CONTACT_FROM_NAME=""'), DEFAULT_KEYS),
     ).toEqual([
-      { line: 2, severity: 'error', message: 'CONTACT_FROM_NAME è vuota: vale il default di astro.config.mjs' },
+      {
+        line: 2,
+        severity: 'error',
+        message: 'CONTACT_FROM_NAME è vuota: il deploy andrebbe online senza il suo valore',
+      },
     ])
   })
 
@@ -145,7 +153,7 @@ describe('envFindings sul file che scrive vercel pull', () => {
       {
         severity: 'error',
         message:
-          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs",
+          "CONTACT_TO_EMAIL non c'è fra le variabili di produzione su Vercel: il deploy andrebbe online senza il suo valore",
       },
     ])
   })

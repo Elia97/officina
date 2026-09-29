@@ -21,6 +21,8 @@ type EnvHit = Omit<Finding, 'path'>
 // `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@59.22.0: `vercel pull` lo scrive al posto del valore di una Sensitive.
 const SENSITIVE = '[SENSITIVE]'
 
+const WITHOUT_VALUE = 'il deploy andrebbe online senza il suo valore'
+
 const dictionaries = (): string[] =>
   existsSync(DICTIONARIES)
     ? readdirSync(DICTIONARIES)
@@ -64,7 +66,7 @@ export function envFindings(content: string, keys: readonly string[]): EnvHit[] 
     const value = env[key]?.trim()
     const declaration = lines.find(({ text }) => new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=`).test(text))
     if (value === undefined || declaration === undefined) {
-      const message = `${key} non c'è fra le variabili di produzione su Vercel: vale il default di astro.config.mjs`
+      const message = `${key} non c'è fra le variabili di produzione su Vercel: ${WITHOUT_VALUE}`
       return [{ severity: 'error', message }]
     }
     const hit = (severity: Finding['severity'], message: string): EnvHit[] => [
@@ -75,7 +77,7 @@ export function envFindings(content: string, keys: readonly string[]): EnvHit[] 
         'warning',
         'è Sensitive su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
       )
-    if (value === '') return hit('error', 'è vuota: vale il default di astro.config.mjs')
+    if (value === '') return hit('error', `è vuota: ${WITHOUT_VALUE}`)
     if (TOKEN.test(value) || DOMAIN.test(value)) return hit('error', 'porta un segnaposto del template')
     return []
   })
