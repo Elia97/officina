@@ -18,13 +18,15 @@ const grouped = (ecosystem: string, pattern: string | undefined, extra: string[]
     ...extra,
   ].join('\n')
 
-const rest = (ecosystem: string, extra: string[] = ['    commit-message:', '      prefix: chore(deps)']): string =>
+const COMMIT = ['    commit-message:', '      prefix: chore(deps)']
+
+const rest = (ecosystem: string, extra: string[] = COMMIT): string =>
   [`  - package-ecosystem: ${ecosystem}`, ...extra].join('\n')
 
 const file = (...updates: string[]): string => ['version: 2', GROUP, 'updates:', ...updates].join('\n')
 
 const NPM_GROUPED = grouped('npm', '@elia97/officina')
-const ACTIONS_GROUPED = grouped('github-actions', 'Elia97/officina/*')
+const ACTIONS_GROUPED = grouped('github-actions', 'Elia97/officina')
 const VALID = file(NPM_GROUPED, rest('npm'), ACTIONS_GROUPED, rest('github-actions'))
 
 describe('il file valido a quattro voci', () => {
@@ -97,8 +99,43 @@ describe('quello che il gruppo deve coprire', () => {
 
     expect(gapsFor(source)).toEqual([
       'nessuna voce del gruppo copre `@elia97/officina`: il gruppo deve prendere il pacchetto da npm',
-      'nessuna voce del gruppo copre `Elia97/officina/*`: il gruppo deve prendere le action da github-actions',
+      'nessuna voce del gruppo copre `Elia97/officina`: il gruppo deve prendere le action da github-actions',
     ])
+  })
+})
+
+describe('il filtro sul percorso delle action, che Dependabot non riconosce', () => {
+  const PATH_FILTER_GAP =
+    '`Elia97/officina/*` non corrisponde a nessuna dipendenza: Dependabot chiama le action `Elia97/officina`, senza la sottocartella, e il filtro va corretto ovunque compaia'
+  const IGNORED = ['    ignore:', "      - dependency-name: 'Elia97/officina/*'"]
+  const EXCLUDED = [
+    '    groups:',
+    '      github-actions:',
+    "        patterns: ['*']",
+    "        exclude-patterns: ['Elia97/officina/*']",
+  ]
+
+  it("nei patterns del gruppo e nell'ignore del resto, come in red-solutions: una mancanza sola per il filtro", () => {
+    const source = file(
+      NPM_GROUPED,
+      rest('npm'),
+      grouped('github-actions', 'Elia97/officina/*'),
+      rest('github-actions', [...COMMIT, ...IGNORED]),
+    )
+
+    expect(gapsFor(source)).toEqual([
+      'nessuna voce del gruppo copre `Elia97/officina`: il gruppo deve prendere le action da github-actions',
+      PATH_FILTER_GAP,
+    ])
+  })
+
+  it.each([
+    { place: 'ignore', extra: IGNORED },
+    { place: 'exclude-patterns', extra: EXCLUDED },
+  ])('con il gruppo corretto e il filtro rimasto nel resto, in $place', ({ extra }) => {
+    const source = file(NPM_GROUPED, rest('npm'), ACTIONS_GROUPED, rest('github-actions', [...COMMIT, ...extra]))
+
+    expect(gapsFor(source)).toEqual([PATH_FILTER_GAP])
   })
 })
 

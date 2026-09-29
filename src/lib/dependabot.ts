@@ -5,7 +5,8 @@ import type { ContractGap } from './contract.ts'
 
 const DEPENDABOT = '.github/dependabot.yml'
 const PACKAGE = '@elia97/officina'
-const ACTIONS = 'Elia97/officina/*'
+const ACTIONS = 'Elia97/officina'
+const PATH_FILTER = `${ACTIONS}/*`
 
 const GROUP_ONLY: readonly string[] = ['commit-message', 'open-pull-requests-limit']
 
@@ -74,6 +75,20 @@ const coverageGaps = (updates: readonly Update[]): ContractGap[] =>
     )
     .map(({ needle, reason }) => gap(`nessuna voce del gruppo copre \`${needle}\`: ${reason}`))
 
+const strings = (value: unknown): string[] => {
+  if (typeof value === 'string') return [value]
+  return typeof value === 'object' && value !== null ? Object.values(value).flatMap(strings) : []
+}
+
+const pathFilterGaps = (document: Dependabot): ContractGap[] =>
+  strings(document).includes(PATH_FILTER)
+    ? [
+        gap(
+          `\`${PATH_FILTER}\` non corrisponde a nessuna dipendenza: Dependabot chiama le action \`${ACTIONS}\`, senza la sottocartella, e il filtro va corretto ovunque compaia`,
+        ),
+      ]
+    : []
+
 // `patterns` restringe l'intera voce: il resto dell'ecosistema smette di aggiornarsi e nessun check diventa rosso.
 function restGaps(updates: readonly Update[]): ContractGap[] {
   const restrained = inGroup(updates).filter((update) => (update.patterns ?? []).length > 0)
@@ -101,5 +116,11 @@ export function dependabotGaps({ read: readFile }: ProjectFiles): ContractGap[] 
   if (typeof document === 'string') return [gap(document)]
 
   const updates = document.updates ?? []
-  return [...groupGaps(document, updates), ...misplacedGaps(updates), ...coverageGaps(updates), ...restGaps(updates)]
+  return [
+    ...groupGaps(document, updates),
+    ...misplacedGaps(updates),
+    ...coverageGaps(updates),
+    ...pathFilterGaps(document),
+    ...restGaps(updates),
+  ]
 }
