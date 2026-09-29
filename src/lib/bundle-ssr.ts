@@ -6,7 +6,7 @@ import { type ServerFile, ssrRoutes } from './vercel-build.ts'
 const FUNCTIONS = '.vercel/output/_functions'
 const SERVER_OUTPUT = 'dist/server'
 
-export type PageEntries = { route: string; entries: string[] }
+export type PageEntries = { route: string; entries: string[]; stylesheets: string[] }
 
 export type SsrReading = {
   pages: PageEntries[]
@@ -40,9 +40,10 @@ export function readSsr(hasHtml: boolean): SsrReading {
   }
   return {
     ...none,
-    pages: routes.map(({ route, entries }) => ({ route, entries })),
-    failures: routes.flatMap(({ route, unmapped, unknownIslands }) => [
+    pages: routes.map(({ route, entries, stylesheets }) => ({ route, entries, stylesheets: stylesheets ?? [] })),
+    failures: routes.flatMap(({ route, unmapped, unknownIslands, stylesheets }) => [
       ...(unmapped ? [`${route}: nessun chunk server in ${FUNCTIONS}, la misura non coprirebbe le isole`] : []),
+      ...(stylesheets === null ? [`${route}: il manifest non dice quali fogli di stile collega la rotta`] : []),
       ...unknownIslands.map(
         (island) => `${route}: l'isola ${island} non ha un chunk in dist/client/_astro fra quelli del manifest`,
       ),

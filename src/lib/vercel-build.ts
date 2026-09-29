@@ -2,16 +2,25 @@ import { posix } from 'node:path'
 
 export type ServerFile = { path: string; source: string }
 
-export type SsrRoute = { route: string; entries: string[]; unmapped: boolean; unknownIslands: string[] }
+export type SsrRoute = {
+  route: string
+  entries: string[]
+  stylesheets: string[] | null
+  unmapped: boolean
+  unknownIslands: string[]
+}
 
 type RawScript = { type?: string; value?: string }
 
+type RawStyle = { type?: string; src?: string }
+
 type RawRoute = {
   scripts?: RawScript[]
+  styles?: RawStyle[]
   routeData?: { route?: unknown; component?: unknown; type?: string; origin?: string; prerender?: boolean }
 }
 
-type SsrPage = { scripts: RawScript[]; route: string; component: string }
+type SsrPage = { scripts: RawScript[]; styles: RawStyle[] | undefined; route: string; component: string }
 
 type RawManifest = {
   routes?: RawRoute[]
@@ -21,6 +30,7 @@ type RawManifest = {
 
 const MANIFEST_CALL = 'deserializeManifest({'
 const ASSET = /^_astro\/([^/]+\.js)$/
+const STYLESHEET = /^(?:.*\/)?_astro\/([^?#]+\.css)(?:[?#].*)?$/
 const RENDERER_RUNTIME = /^@astrojs\/[\w-]+\/client\.js$/
 const COMPONENT_SCRIPT = '?astro&type=script'
 const PAGE_ROUTE = /\["(src\/pages\/[^"]+)", (_page\d+)\]/g
@@ -82,7 +92,7 @@ function serverClosure(start: string, files: ReadonlyMap<string, string>, manife
   return [...reached.values()]
 }
 
-const assetOf = (value: string | undefined): string | undefined => value?.match(ASSET)?.[1]
+const assetOf = (value: string | undefined, pattern = ASSET): string | undefined => value?.match(pattern)?.[1]
 
 function clientModules(manifest: RawManifest): Map<string, string> {
   const inlined = new Set((manifest.inlinedScripts ?? []).map(([specifier]) => specifier))
@@ -110,10 +120,22 @@ const unknownIslands = (texts: readonly string[], modules: ReadonlyMap<string, s
     .filter((path) => !modules.has(path))
     .sort()
 
-function ssrPage({ scripts = [], routeData }: RawRoute): SsrPage[] {
+const routeStylesheets = (styles: readonly RawStyle[] | null | undefined): string[] | null =>
+  !Array.isArray(styles)
+    ? null
+    : [
+        ...new Set(
+          styles
+            .filter((style) => style.type === 'external')
+            .map((style) => assetOf(style.src, STYLESHEET))
+            .filter((name) => name !== undefined),
+        ),
+      ].sort()
+
+function ssrPage({ scripts = [], styles, routeData }: RawRoute): SsrPage[] {
   if (routeData?.type !== 'page' || routeData.origin !== 'project' || routeData.prerender !== false) return []
   const { route, component } = routeData
-  return typeof route === 'string' && typeof component === 'string' ? [{ scripts, route, component }] : []
+  return typeof route === 'string' && typeof component === 'string' ? [{ scripts, styles, route, component }] : []
 }
 
 export function ssrRoutes(files: readonly ServerFile[]): SsrRoute[] | null {
@@ -134,6 +156,7 @@ function routesOf(host: ServerFile, manifest: RawManifest, files: readonly Serve
     return {
       route: page.route,
       entries: routeEntries(page, texts, modules),
+      stylesheets: routeStylesheets(page.styles),
       unmapped: chunk === undefined,
       unknownIslands: unknownIslands(texts, modules),
     }

@@ -46,6 +46,7 @@ const MANIFEST = {
   routes: [
     {
       scripts: [],
+      styles: [{ type: 'external', src: '_astro/style.css' }],
       routeData: { type: 'page', origin: 'project', prerender: false, route: '/', component: 'src/pages/index.astro' },
     },
   ],
@@ -97,6 +98,21 @@ describe('una build SSR con l’adapter Vercel', () => {
     expect(exitCode).toBe(1)
     expect(said).toContain('/: nessun chunk server')
   })
+  it('pesa il CSS della rotta con i fogli che il manifest le assegna', async () => {
+    const { said } = await run(project(VERCEL))
+
+    expect(said).toMatch(/^ {2}style\.css +0\.\d KB +12\.0 KB +1 rotta$/m)
+    expect(said).not.toContain('da solo')
+  })
+
+  it('fallisce su una rotta per cui il manifest non dice i fogli, invece di pesarla zero', async () => {
+    const unstyled = SERVER_ENTRY.replace('"styles":[{"type":"external","src":"_astro/style.css"}],', '')
+    const { exitCode, said } = await run(project({ ...VERCEL, [`${FUNCTIONS}/entry.mjs`]: unstyled }))
+
+    expect(exitCode).toBe(1)
+    expect(said).toContain('/: il manifest non dice quali fogli di stile collega la rotta')
+  })
+
   it("fallisce su un'isola che il manifest non collega al client", async () => {
     const ghost = 'render({ "client:component-path": "@/components/ghost" })\n'
     const { exitCode, said } = await run(project({ ...VERCEL, [`${FUNCTIONS}/chunks/home.mjs`]: ghost }))
@@ -147,7 +163,8 @@ describe('una build senza l’adapter Vercel', () => {
   })
 
   it('statica si misura come sempre', async () => {
-    const html = '<script type="module" src="/_astro/search.A1.js"></script>\n'
+    const html =
+      '<link rel="stylesheet" href="/_astro/style.css"><script type="module" src="/_astro/search.A1.js"></script>\n'
     const { exitCode, said } = await run(project({ ...BASE, 'dist/client/index.html': html }))
 
     expect(exitCode).toBe(0)

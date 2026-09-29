@@ -26,6 +26,15 @@ export function htmlEntries(html: string): string[] {
   return [...captured(html, /(?:src|href)="\/_astro\/([^"]+\.js)"/g, 1)]
 }
 
+const LINK_TAG = /<link\b[^>]*>/gi
+const STYLESHEET_REL = /\brel=["']?stylesheet\b/i
+const LOCAL_STYLESHEET = /\bhref=["']?[^"'\s>]*?\/_astro\/([^"'\s>?#]+\.css)/i
+
+export function htmlStylesheets(html: string): string[] {
+  const links = [...html.matchAll(LINK_TAG)].map(([tag]) => tag).filter((tag) => STYLESHEET_REL.test(tag))
+  return [...new Set(links.map((tag) => tag.match(LOCAL_STYLESHEET)?.[1]).filter((name) => name !== undefined))]
+}
+
 /** `unknown`: i nomi citati che in `dist/client/_astro` non ci sono — saltarli vorrebbe dire misurare meno del vero. */
 export type Closure = { reached: Set<string>; unknown: Set<string> }
 
@@ -55,16 +64,3 @@ export function deferredClosure(reached: Set<string>, chunks: Map<string, Chunk>
 export const CSS_BUDGET_GZIP = 12 * 1024
 
 export type Stylesheet = { file: string; gzip: number }
-
-export function heaviestStylesheet(sheets: readonly Stylesheet[]): Stylesheet | null {
-  return sheets.reduce<Stylesheet | null>((worst, sheet) => (worst && worst.gzip >= sheet.gzip ? worst : sheet), null)
-}
-
-// Astro emette un foglio di stile per gruppo di pagine e una rotta ne collega esattamente uno,
-// quindi la loro somma è fatta di byte che nessun visitatore scarica mai insieme.
-export function cssBudgetFailure(sheets: readonly Stylesheet[], maxGzip = CSS_BUDGET_GZIP): string | null {
-  const heaviest = heaviestStylesheet(sheets)
-  if (heaviest === null || heaviest.gzip <= maxGzip) return null
-  const over = heaviest.gzip - maxGzip
-  return `CSS ${(heaviest.gzip / 1024).toFixed(1)} KB gz > ${(maxGzip / 1024).toFixed(1)} KB (+${(over / 1024).toFixed(1)} KB) in ${heaviest.file}`
-}

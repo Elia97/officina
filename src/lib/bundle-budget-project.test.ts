@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { type Budget, budgetFor, CSS_BUDGET_GZIP, cssBudgetFailure, deferredClosure } from './bundle-budget.ts'
+import { type Budget, budgetFor, CSS_BUDGET_GZIP, deferredClosure } from './bundle-budget.ts'
+import { measureCss } from './bundle-css.ts'
 
 const motion: Budget = { label: 'motion', matches: (route) => route === '/', maxGzip: 72 * 1024 }
 
@@ -23,9 +24,11 @@ describe('i budget dichiarati dal progetto', () => {
 describe('il tetto del CSS dichiarato dal progetto', () => {
   it('sostituisce quello del pacchetto, nel confronto e nel messaggio', () => {
     const sheets = [{ file: 'main.css', gzip: CSS_BUDGET_GZIP + 1024 }]
+    const failures = (maxGzip: number) =>
+      measureCss([{ route: '/', stylesheets: ['main.css'] }], sheets, maxGzip, 'dist/client/_astro').failures
 
-    expect(cssBudgetFailure(sheets, 14 * 1024)).toBeNull()
-    expect(cssBudgetFailure(sheets, 10 * 1024)).toContain('> 10.0 KB')
+    expect(failures(14 * 1024)).toEqual([])
+    expect(failures(10 * 1024)[0]).toContain('> 10.0 KB')
   })
 })
 
