@@ -48,9 +48,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "format": "biome check --write .",
+    "check:comments": "node src/bin.ts check comments --strict",
     "check:deadcode": "fallow dead-code",
     "check:health": "fallow health --complexity --coverage coverage/coverage-final.json",
-    "ci": "biome ci --error-on-warnings . && pnpm run typecheck && pnpm run check:deadcode && pnpm run test && pnpm run check:health",
+    "ci": "biome ci --error-on-warnings . && pnpm run typecheck && pnpm run check:deadcode && pnpm run check:comments && pnpm run test && pnpm run check:health",
     "test:pack": "bash scripts/pack-test.sh"
   },
   "devDependencies": {

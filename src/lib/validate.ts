@@ -51,8 +51,6 @@ export const oneOf =
   (value, path) =>
     allowed.includes(value) ? [] : [problem(path, expected, value)]
 
-// Una voce non dichiarata è un errore: `sitUrl` al posto di `siteUrl` non deve passare in
-// silenzio, che è il modo esatto in cui una configurazione smette di dire qualcosa.
 export const aShape =
   (fields: Record<string, Check>): Check =>
   (value, path) => {
