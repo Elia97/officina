@@ -71,6 +71,25 @@ runs:
     - run: pnpm install --frozen-lockfile
       shell: bash
 
+    # Lanciato a mano, `deploy.yml` viene dal ramo scelto in «Use workflow from», il pacchetto dal lockfile del tag.
+    - name: Stessa versione di officina nel tag e nell'action
+      shell: bash
+      env:
+        TARGET_REF: ${{ steps.target.outputs.ref }}
+      run: |
+        action=$(node -p "require(process.env.GITHUB_ACTION_PATH + '/../../package.json').version")
+        installed=node_modules/@elia97/officina/package.json
+        way="lancia Deploy da $TARGET_REF, scegliendolo in «Use workflow from», oppure fai una release che porti officina $action"
+        if [ ! -f "$installed" ]; then
+          echo "::error::$TARGET_REF non installa @elia97/officina, e questa action è la $action: $way"
+          exit 1
+        fi
+        tagged=$(node -p "require('./$installed').version")
+        if [ "$tagged" != "$action" ]; then
+          echo "::error::$TARGET_REF installa officina $tagged, e questa action è la $action: $way"
+          exit 1
+        fi
+
     - run: pnpm run check:placeholders
       shell: bash
 
