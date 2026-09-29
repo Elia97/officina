@@ -44,6 +44,10 @@ describe('resolveTarget', () => {
   it("lascia il nome com'è quando non esiste nessun fratello", () => {
     expect(resolveTarget('docs/guides/seo.md', 'missing.md')).toBe('missing.md')
   })
+
+  it('cerca il nome anche alla radice e poi in docs/', () => {
+    expect(resolveTarget('CLAUDE.md', 'ARCHITECTURE.md')).toBe('docs/ARCHITECTURE.md')
+  })
 })
 
 describe('findingsFor', () => {
