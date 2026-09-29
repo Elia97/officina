@@ -27,6 +27,15 @@ describe('htmlEntries', () => {
     const html = '<script src="/_astro/page.js"></script><link href="/_astro/main.js"><link href="/_astro/x.css">'
     expect(htmlEntries(html).sort()).toEqual(['main.js', 'page.js'])
   })
+
+  it.each([
+    ['sotto una base', '<script src="/sub/_astro/page.js"></script>'],
+    ['da un assetsPrefix', '<script src="https://cdn.example.com/_astro/page.js"></script>'],
+    ['con la query della skew protection', '<script src="/_astro/page.js?dpl=dpl_123"></script>'],
+    ['fra apici singoli', "<script src='/_astro/page.js'></script>"],
+  ])('riconosce lo script %s', (_, html) => {
+    expect(htmlEntries(html)).toEqual(['page.js'])
+  })
 })
 
 describe('staticClosure', () => {

@@ -23,7 +23,7 @@ export function parseEdges(source: string): Pick<Chunk, 'static' | 'dynamic'> {
 }
 
 export function htmlEntries(html: string): string[] {
-  return [...captured(html, /(?:src|href)="\/_astro\/([^"]+\.js)"/g, 1)]
+  return [...captured(html, /\b(?:src|href)=["']?[^"'\s>]*?\/_astro\/([^"'\s>?#]+\.js)/g, 1)]
 }
 
 const LINK_TAG = /<link\b[^>]*>/gi

@@ -174,3 +174,18 @@ describe('i fogli di stile delle rotte', () => {
     expect(routesOf([{ ...unstyled, styles: null }])?.[0]?.stylesheets).toBeNull()
   })
 })
+
+describe('gli script della rotta con un prefisso o una query', () => {
+  it('portano lo stesso nome del chunk', () => {
+    const scripts = [
+      { type: 'external', value: '_astro/page.E5.js?dpl=dpl_123' },
+      { type: 'external', value: 'sub/_astro/late.F6.js' },
+    ]
+
+    expect(routesOf([page('/chi-siamo', 'src/pages/about.astro', {}, scripts)])?.[0]?.entries).toEqual([
+      'header.B2.js',
+      'late.F6.js',
+      'page.E5.js',
+    ])
+  })
+})
