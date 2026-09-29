@@ -124,7 +124,7 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 |---|---|---|
 | `actions/ci` | checkout, node, install, `astro sync`, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
 | `actions/review` | `astro sync`, poi `fallow review` sul diff contro il merge-base | il job informativo |
-| `actions/deploy` | risoluzione del tag, gate, `vercel pull`, `build`, controllo della build, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
+| `actions/deploy` | risoluzione del tag, stessa versione di officina, gate, `vercel pull`, `build`, controllo della build, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
 
 ```yaml
@@ -135,7 +135,7 @@ jobs:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     steps:
-      - uses: Elia97/officina/actions/deploy@v0.4.0
+      - uses: Elia97/officina/actions/deploy@vX.Y.Z
         id: deploy
         with:
           ref: ${{ inputs.ref }}
@@ -147,6 +147,8 @@ jobs:
 `astro sync` genera i tipi di `.astro/`, che fallow pretende e un checkout pulito non ha; se fallisce il passo lo segnala con un avviso e il job prosegue.
 
 I tre segreti sono input obbligatori e l'action li mette nell'`env` dei soli tre passi che chiamano `vercel`. Nell'`env` del job li vedrebbero anche `pnpm install` e gli script di installazione di ogni dipendenza, che girano codice di terzi con in mano un token di deploy.
+
+**Il deploy lanciato a mano.** Con `workflow_dispatch` il workflow viene dal ramo scelto in «Use workflow from», e il pacchetto dal lockfile del tag che si deploya: le due metà possono avere due versioni di officina diverse, e un passo dell'action più nuova può chiamare un'opzione che gli script del tag non conoscono. `actions/deploy` confronta le due versioni subito dopo l'install, prima di ogni script del progetto e di `vercel pull`, e si ferma dicendole se non coincidono o se il tag non installa officina. Un tag più vecchio si deploya lanciando Deploy da quel tag: il suo `deploy.yml` dichiara l'action della sua versione, con i gate di allora. Perché si possa, l'environment `production` del progetto deve ammettere i tag fra i ref da cui si deploya.
 
 Quello che si scarica al volo è fissato a una versione esatta, in un posto solo: la CLI di Vercel in `actions/deploy/action.yml`, `@lhci/cli` in `src/checks/lighthouse.ts`, `serve` in `src/sh/lhci-local.sh`. Che i primi due siano esatti, uguali ovunque e non indietro di una major su npm lo guarda ogni lunedì `.github/workflows/vercel-cli.yml`, con `officina check vercel-cli`.
 
