@@ -160,9 +160,9 @@ describe('presetGaps e lo $schema di Biome', () => {
       'lefthook.yml': `extends:\n  - ${LEFTHOOK_PRESET}\n`,
     })
 
-  it("avvisa di uno schema con la versione nell'URL, e dice dove puntarlo", () => {
+  it("segnala uno schema con la versione nell'URL, e dice dove puntarlo", () => {
     expect(presetGaps(withSchema('https://biomejs.dev/schemas/2.5.10/schema.json'))).toEqual([
-      { path: 'biome.json', message: expect.stringContaining(BIOME_SCHEMA), severity: 'warning' },
+      { path: 'biome.json', message: expect.stringContaining(BIOME_SCHEMA) },
     ])
   })
 
