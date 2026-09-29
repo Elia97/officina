@@ -67,6 +67,8 @@ describe('report: tempo verbale', () => {
     ['// vedi #12', true],
     ['// colore #123456', false],
     ['const x = 1 // prima era 2', true],
+    ['// sostituisce la lista del pacchetto', true],
+    ['// un refuso al posto di siteUrl non passa', false],
     ['key: value # previously unused', true],
   ])('%s → %s', (src, flagged) => {
     const file = src.startsWith('key') ? 'a.yml' : 'a.ts'
