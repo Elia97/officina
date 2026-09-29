@@ -171,7 +171,6 @@ export function presetGaps(files: ProjectFiles): ContractGap[] {
     gaps.push({
       path: 'biome.json',
       message: `\`$schema\` porta la versione di Biome, che Dependabot non aggiorna: va su \`${BIOME_SCHEMA}\``,
-      severity: 'warning',
     })
   }
   if (!mentions(files.read('lefthook.yml'), LEFTHOOK_PRESET)) {

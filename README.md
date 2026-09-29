@@ -114,7 +114,7 @@ extends:
   - node_modules/@elia97/officina/presets/lefthook.yml
 ```
 
-`$schema` punta allo schema che il pacchetto di Biome installa, che è sempre quello della CLI. L'URL di biomejs.dev porta invece la versione, che Dependabot non aggiorna quando alza `@biomejs/biome`, e da lì Biome segnala lo scarto a ogni esecuzione: `doctor` lo dice con un avviso.
+`$schema` punta allo schema che il pacchetto di Biome installa, che è sempre quello della CLI. L'URL di biomejs.dev porta invece la versione, che Dependabot non aggiorna quando alza `@biomejs/biome`, e da lì Biome segnala lo scarto a ogni esecuzione: `doctor` lo segnala come errore.
 
 ## Action per i workflow
 
