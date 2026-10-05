@@ -159,7 +159,6 @@ export function ssrRoutes(files: readonly ServerFile[]): SsrRoute[] | null {
   return found === null ? null : routesOf(found.host, found.manifest, files)
 }
 
-// `routePattern` non legge i segmenti misti (`[slug].md`, `post-[id]`), che il pattern del manifest di Astro sì.
 function astroPattern(route: string, pattern: unknown): RegExp {
   if (typeof pattern === 'string') {
     try {

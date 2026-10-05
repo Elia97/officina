@@ -59,9 +59,13 @@ export function pageRouteOf(file: string, pagesDir: string): string {
   )
 }
 
+const PARAMETER = /(\[[^\]]*\])/
+
 function segmentPattern(segment: string): string {
-  if (segment.startsWith('[')) return '[^/]+'
-  return segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return segment
+    .split(PARAMETER)
+    .map((part) => (part.startsWith('[') ? '[^/]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('')
 }
 
 const TRAILING_REST_SEGMENT = /\/\[\.\.\.[^/]*\]$/
