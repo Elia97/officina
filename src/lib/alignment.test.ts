@@ -57,18 +57,14 @@ describe('scriptGaps', () => {
   })
 })
 
-describe('scriptGaps e un requisito nuovo', () => {
-  it('chiede `check:links` come avviso, mentre gli script di prima restano errori', () => {
-    const gaps = scriptGaps({})
-    const severity = (name: string) => gaps.find(({ message }) => message.startsWith(`script \`${name}\``))?.severity
-
-    expect(severity('check:links')).toBe('warning')
-    expect(severity('perf:bundle')).toBeUndefined()
+describe('scriptGaps e `check:links`', () => {
+  it('dopo la 0.11.0 lo chiede come gli altri script: assente o diverso è un errore', () => {
+    expect(scriptGaps({}).find(({ message }) => message.startsWith('script `check:links`'))).toEqual({
+      path: 'package.json',
+      message: 'script `check:links` assente: atteso `officina check links`',
+    })
     expect(scriptGaps({ scripts: { ...alignedScripts(), 'check:links': 'node links.mjs' } })).toEqual([
-      expect.objectContaining({
-        message: expect.stringContaining('`check:links` è `node links.mjs`'),
-        severity: 'warning',
-      }),
+      { path: 'package.json', message: 'script `check:links` è `node links.mjs`: atteso `officina check links`' },
     ])
   })
 })

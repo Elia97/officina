@@ -40,8 +40,7 @@ runs:
     - run: pnpm run perf:bundle
       shell: bash
 
-    # TODO: dalla 0.12.0 `check:links` è un errore di doctor: togli --if-present.
-    - run: pnpm run --if-present check:links
+    - run: pnpm run check:links
       shell: bash
 
     - name: Cache del browser di Playwright
