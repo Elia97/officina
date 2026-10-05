@@ -45,11 +45,19 @@ describe('configGaps', () => {
       '`siteUrl` finisce con una barra: `https://prova.test/`',
     ])
   })
+})
 
+describe('configGaps e le rotte', () => {
   it('nomina il pattern dinamico che nessuno va a visitare', () => {
-    expect(messages(configGaps(complete, ['/blog/[slug]', '/tag/[tag]']))).toEqual([
+    expect(messages(configGaps(complete, { missingRepresentatives: ['/blog/[slug]', '/tag/[tag]'] }))).toEqual([
       '`routes.representatives` non ha un percorso per `/blog/[slug]`: smoke e Lighthouse non guardano quella pagina',
       '`routes.representatives` non ha un percorso per `/tag/[tag]`: smoke e Lighthouse non guardano quella pagina',
+    ])
+  })
+
+  it('nomina la voce di `routes.disabled` che non spegne niente', () => {
+    expect(messages(configGaps(complete, { unknownDisabled: ['/contatti'] }))).toEqual([
+      '`routes.disabled` nomina `/contatti`, che non è una pagina dinamica prerenderizzata di `src/pages`: non spegne niente',
     ])
   })
 })

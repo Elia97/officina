@@ -5,7 +5,7 @@ import process from 'node:process'
 
 import { missingInput } from '../lib/cli.ts'
 import { isRequired, loadConfig } from '../lib/config.ts'
-import { expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
+import { type Expectations, expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
 import {
   type CheckResult,
   runChecks,
@@ -23,6 +23,9 @@ function printResults(results: readonly CheckResult[]): void {
     else console.error(`✗ ${check} — ${detail}`)
   }
 }
+
+const disabledResults = ({ disabled }: Expectations): CheckResult[] =>
+  disabled.map(({ label }) => ({ check: `pagina ${label}`, status: 'skip', detail: 'spenta da `routes.disabled`' }))
 
 function printFailures(failures: readonly CheckResult[]): void {
   console.error(`\n✗ ${failures.length} controllo/i falliti:`)
@@ -58,14 +61,14 @@ export async function main(args: string[] = []): Promise<number> {
   }
   if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return 1
 
-  const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR)
+  const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR, routes.disabled)
   const pages = smokeRoutes(expected, smoke.nonHtmlRoutes, routes.representatives)
 
   console.log(`\nSmoke di produzione — ${baseUrl}\n`)
 
   await waitForAlias(context, (ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   const results = await runChecks(context, pages, smoke.checks)
-  printResults(results)
+  printResults([...results, ...disabledResults(expected)])
 
   const failures = results.filter(({ status }) => status === 'fail')
   if (failures.length > 0) {

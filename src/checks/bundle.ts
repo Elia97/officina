@@ -23,6 +23,7 @@ import { type PageEntries, readSsr, type SsrReading } from '../lib/bundle-ssr.ts
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
 import {
+  disabledRouteFailures,
   type Expectations,
   expectedRoutes,
   filesWithExtension,
@@ -138,8 +139,14 @@ function printSsrNote(expected: Expectations, ssr: SsrReading): void {
   for (const file of expected.ssr) console.log(`      - ${file}`)
 }
 
+function printDisabled({ disabled }: Expectations): void {
+  if (disabled.length === 0) return
+  console.log('\nSPENTE  da `routes.disabled`, nessuna pagina attesa:')
+  for (const { label, file } of disabled) console.log(`      - ${label} (${file})`)
+}
+
 export async function main(): Promise<number> {
-  const { bundle = {} } = await loadConfig(process.cwd())
+  const { bundle = {}, routes: { disabled } = {} } = await loadConfig(process.cwd())
   if (missingInput(ASSETS, 'è la build da misurare: prima `pnpm build`')) return 1
   if (missingInput(PAGES, 'le rotte attese si derivano da lì')) return 1
 
@@ -149,15 +156,18 @@ export async function main(): Promise<number> {
   const ssr = readSsr(html.length > 0)
   const routes = [...html, ...ssr.pages]
   const pages = measurePages(routes, readChunks(), bundle.budgets ?? [])
-  const expected = expectedRoutes(readPageFiles(PAGES), PAGES)
-  const measured = pages.map((page) => page.route)
-  const failures = ssr.comparesExpectedRoutes ? missingRouteFailures(expected, measured, DIST) : []
+  const expected = expectedRoutes(readPageFiles(PAGES), PAGES, disabled)
+  const emitted = { html: html.map((page) => page.route), ssr: ssr.pages.map((page) => page.route) }
+  const failures = ssr.comparesExpectedRoutes
+    ? [...missingRouteFailures(expected, emitted, DIST), ...disabledRouteFailures(expected, emitted)]
+    : []
   failures.push(...ssr.failures, ...unknownChunkFailures(pages), ...overBudgetFailures(pages))
 
   const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)
   failures.push(...checkCss(routes, cssMaxGzip, width))
   printSsrNote(expected, ssr)
+  printDisabled(expected)
 
   if (failures.length > 0) {
     console.error(`\n✗ Budget di bundle:\n${failures.map((f) => `  - ${f}`).join('\n')}\n`)

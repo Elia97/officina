@@ -31,8 +31,12 @@ export interface OfficinaConfig {
     botId?: FeatureSetting
   }
   placeholders?: { sources?: readonly string[]; contactEnvKeys?: readonly string[] }
-  /** Per ogni pattern dinamico di `src/pages`, un percorso vero che smoke e Lighthouse visitano. */
-  routes?: { representatives?: Representatives }
+  routes?: {
+    /** Per ogni pattern dinamico di `src/pages`, un percorso vero che smoke e Lighthouse visitano. */
+    representatives?: Representatives
+    /** I pattern dinamici di `src/pages` spenti per scelta: non emettono pagine, e nessun gate le pretende. */
+    disabled?: readonly string[]
+  }
 }
 
 export const FEATURES = ['analytics', 'roadmap', 'generators', 'botId'] as const
@@ -62,7 +66,7 @@ const SHAPE = aShape({
   analytics: aShape({ linkTracking: aString }),
   features: aShape({ analytics: feature, roadmap: feature, generators, botId: feature }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
-  routes: aShape({ representatives: aRecordOf(aString) }),
+  routes: aShape({ representatives: aRecordOf(aString), disabled: anArrayOf(aString) }),
 })
 
 const CONFIG_FILES: readonly string[] = ['officina.config.ts', 'officina.config.mjs', 'officina.config.js']

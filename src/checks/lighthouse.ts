@@ -29,13 +29,15 @@ async function resolveConfig(url: string | undefined): Promise<LighthouseRc | nu
   if (missingInput(PAGES_DIR, 'le rotte da visitare si derivano da lì')) return null
 
   const rc: LighthouseRc = JSON.parse(readFileSync(RC_FILE, 'utf8'))
-  const routes = auditRoutes(expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR), configured.representatives)
+  const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR, configured.disabled)
+  const routes = auditRoutes(expected, configured.representatives)
   const env = url === undefined ? process.env : { ...process.env, LH_BASE_URL: url }
   const resolved = lighthouseConfig(rc, routes, env)
 
   const where = url === undefined ? '' : ` su ${url}`
   console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}${where}\n`)
   for (const page of resolved.ci.collect.url ?? []) console.log(`  ${page}`)
+  for (const { label } of expected.disabled) console.log(`  ${label} — spenta da \`routes.disabled\`, non misurata`)
   console.log()
   return resolved
 }
