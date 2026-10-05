@@ -29,6 +29,7 @@ export interface OfficinaConfig {
     roadmap?: FeatureSetting
     generators?: GeneratorsSetting
     botId?: FeatureSetting
+    links?: FeatureSetting
   }
   placeholders?: { sources?: readonly string[]; contactEnvKeys?: readonly string[] }
   routes?: {
@@ -39,7 +40,7 @@ export interface OfficinaConfig {
   }
 }
 
-export const FEATURES = ['analytics', 'roadmap', 'generators', 'botId'] as const
+export const FEATURES = ['analytics', 'roadmap', 'generators', 'botId', 'links'] as const
 export type FeatureName = (typeof FEATURES)[number]
 
 /** Un controllo si spegne solo scrivendolo: il silenzio vale `'required'`. */
@@ -64,7 +65,7 @@ const SHAPE = aShape({
     checks: anArrayOf(aFunction),
   }),
   analytics: aShape({ linkTracking: aString }),
-  features: aShape({ analytics: feature, roadmap: feature, generators, botId: feature }),
+  features: aShape({ analytics: feature, roadmap: feature, generators, botId: feature, links: feature }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
   routes: aShape({ representatives: aRecordOf(aString), disabled: anArrayOf(aString) }),
 })

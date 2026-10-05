@@ -8,7 +8,7 @@ const messages = (gaps: { message: string }[]) => gaps.map(({ message }) => mess
 const complete: OfficinaConfig = {
   siteUrl: 'https://prova.test',
   icons: { background: '#fafafa' },
-  features: { analytics: 'required', roadmap: false, generators: 'required', botId: 'required' },
+  features: { analytics: 'required', roadmap: false, generators: 'required', botId: 'required', links: 'required' },
 }
 
 describe('configGaps', () => {
@@ -31,19 +31,30 @@ describe('configGaps', () => {
       "`features.roadmap` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
       "`features.generators` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
       "`features.botId` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
+      "`features.links` non dichiarata: vale `'required'`, e il gate fallisce se non trova cosa controllare",
     ])
   })
 
   it('boccia un siteUrl che non è un URL, o che porta la barra finale', () => {
     const rest = {
       icons: { background: '#fafafa' },
-      features: { analytics: 'required', roadmap: false, generators: false, botId: false },
+      features: { analytics: 'required', roadmap: false, generators: false, botId: false, links: false },
     } as const
 
     expect(messages(configGaps({ siteUrl: 'prova.test', ...rest }))).toEqual(['`siteUrl` non è un URL: `prova.test`'])
     expect(messages(configGaps({ siteUrl: 'https://prova.test/', ...rest }))).toEqual([
       '`siteUrl` finisce con una barra: `https://prova.test/`',
     ])
+  })
+})
+
+describe('un controllo nuovo', () => {
+  it('chiede `features.links` come avviso, mentre le voci di prima restano errori', () => {
+    const gaps = configGaps({ ...complete, features: {} })
+    const severity = (name: string) => gaps.find(({ message }) => message.startsWith(`\`features.${name}\``))?.severity
+
+    expect(severity('links')).toBe('warning')
+    expect(severity('analytics')).toBeUndefined()
   })
 })
 

@@ -51,7 +51,7 @@ export function routeOf(htmlPath: string, dist: string): string {
 
 const SSR_OPT_OUT = /^\s*export\s+const\s+prerender\s*=\s*false\b/m
 
-function pageRouteOf(file: string, pagesDir: string): string {
+export function pageRouteOf(file: string, pagesDir: string): string {
   return (
     toPosix(file, pagesDir)
       .replace(/\.astro$/, '')
@@ -68,7 +68,7 @@ const TRAILING_REST_SEGMENT = /\/\[\.\.\.[^/]*\]$/
 
 // Anche un segmento rest finale fa match col vuoto: `paginate()` emette la prima pagina come
 // percorso nudo (`/news`, mai `/news/1`), quindi esigere un segmento boccia un archivio di una pagina.
-function routePattern(route: string): RegExp {
+export function routePattern(route: string): RegExp {
   const body = (path: string) => path.split('/').map(segmentPattern).join('/')
   if (!TRAILING_REST_SEGMENT.test(route)) return new RegExp(`^${body(route)}$`)
   return new RegExp(`^${body(route.replace(TRAILING_REST_SEGMENT, ''))}(?:/.*)?$`)
@@ -122,7 +122,7 @@ export function missingRouteFailures(expected: Expectations, emitted: EmittedRou
 
 const SHOWN = 3
 
-const listed = (routes: readonly string[]): string =>
+export const listed = (routes: readonly string[]): string =>
   routes.length <= SHOWN ? routes.join(', ') : `${routes.slice(0, SHOWN).join(', ')} e altre ${routes.length - SHOWN}`
 
 export function disabledRouteFailures(expected: Expectations, { html, ssr }: EmittedRoutes): string[] {

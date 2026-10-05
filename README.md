@@ -19,6 +19,7 @@ pnpm add -D @elia97/officina
     "check:roadmap": "officina check roadmap",
     "check:placeholders": "officina check placeholders",
     "perf:bundle": "officina check bundle",
+    "check:links": "officina check links",
     "smoke:prod": "officina check smoke",
     "analytics:verify": "officina check analytics",
     "lhci": "officina check lighthouse",
@@ -45,6 +46,7 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 | Comando | Cosa guarda | Da dove prende le rotte |
 |---|---|---|
 | `check bundle` | il JavaScript e il CSS di `dist/client`, gzip, contro un budget per rotta | `src/pages`; sotto SSR, il manifest della build Vercel |
+| `check links` | gli `<a href>` di `dist/client`: ogni link interno porta a qualcosa che la build serve, e nessuno a `#` | i file di `dist/client` e le rotte a richiesta del manifest della build Vercel |
 | `check smoke [url]` | la produzione viva: pagine, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
 | `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi del modulo di link-tracking del progetto (`analytics.linkTracking`) | — |
 | `check lighthouse [url] [--local]` | Lighthouse CI sul `.lighthouserc.json` del progetto; con `url` misura un sito già servito, `--local` fa build, server statico e Chrome da sé | `src/pages` |
@@ -53,6 +55,8 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 Gli script di una pagina statica si leggono dal suo HTML, anche sotto una `base`, da un `assetsPrefix` o con una query. Una rotta renderizzata a richiesta non emette HTML. Con l'adapter Vercel, `check bundle` la legge dal manifest che Astro scrive in `.vercel/output/_functions` e la misura con gli stessi budget delle pagine statiche: gli script della rotta, le isole e gli script dei componenti che i chunk server della pagina nominano, e il runtime del framework quando c'è un'isola. Il JavaScript che Astro incorpora nell'HTML non si conta, né qui né per le pagine statiche. Due limiti: le isole raggiungibili solo attraverso un `import()` dinamico del server — un'isola dentro un contenuto MDX, per esempio — restano fuori, perché seguire quegli import attribuirebbe a ogni pagina il contenuto di tutto il sito; e un'isola si attribuisce per chunk, quindi una pagina eredita le isole dei componenti che condividono un chunk con quelli che usa. Il manifest è un formato interno di Astro, già cambiato una volta sotto i piedi del misuratore che c'era prima: quando non lo riconosce il check lo dice, e fallisce se non gli resta nessuna rotta da misurare; un'isola che non sa collegare al client è un fallimento, non una misura più bassa. Con un altro adapter, o con un manifest che non riconosce, le rotte SSR restano fuori, dichiarate: si misurano le pagine statiche, e il CSS come dice il paragrafo che segue.
 
 Il CSS di una rotta è la somma dei fogli di `dist/client/_astro` che collega, ognuno contato una volta: per una pagina statica i `<link rel="stylesheet">` del suo HTML, anche sotto una `base`, da un `assetsPrefix` o con una query; per una rotta renderizzata a richiesta i fogli esterni che il manifest le assegna, e una rotta per cui il manifest non li dice è un fallimento. Il tetto è `bundle.cssMaxGzip`, e il rapporto ha una riga per ogni combinazione di fogli, perché le rotte che collegano gli stessi fogli pesano uguale. Non si contano il CSS dentro l'HTML, nei `<style>`, come il JavaScript incorporato, i link che non bloccano il rendering (`preload`, `prefetch`) e i fogli fuori da `_astro`, da `public/` o da un CDN. Un foglio citato che in `_astro` non c'è è un fallimento. Un foglio che nessuna rotta misurata collega si pesa da solo contro lo stesso tetto, e nel rapporto porta «da solo»: il CSS di un `import()` dinamico, quello dei componenti dentro un contenuto MDX reso a richiesta, che il manifest non assegna alla pagina, o tutti i fogli di una build le cui rotte non si leggono. Da solo pesa meno del vero, ma nessun foglio oltre il tetto passa in silenzio.
+
+`check links` legge gli `<a href>` di ogni HTML di `dist/client`, fuori dai commenti, dagli `<script>`, dagli `<style>` e dai valori degli attributi, dove Astro lascia `<` e `>` come sono. È interno un link relativo, uno che comincia con `/` o uno assoluto verso l'origine di `siteUrl`, e se ne confronta il percorso, senza query né ancora, con o senza barra finale; un link relativo si risolve come con `trailingSlash: 'never'`, che è quello dei template. Vale se porta a un file della build, pagina o altro file, o a una rotta che il manifest della build Vercel rende a richiesta, endpoint e `/` di lingua compresi, confrontata con il pattern che Astro scrive lì; senza manifest, o con un altro adapter, a una pagina `.astro` con `prerender = false`, e il rapporto lo dice. Che la pagina dietro una rotta a richiesta esista lo sa solo il server, e una rotta come `/[...slug]` accetta ogni percorso: il rapporto conta i link che passano così. `href="#"`, `href=""` e un `href` senza valore sono segnaposto, e falliscono come un link rotto. Il rapporto raggruppa per destinazione e nomina le pagine che la citano: un link rotto nel footer è un problema solo, non uno per pagina. Restano fuori, e il rapporto li conta, i link esterni, che chiederebbero la rete, `mailto:`, `tel:` e gli altri schemi, e l'id a cui punta un'ancora. Una `dist/client` senza HTML è un fallimento, perché il controllo non affermerebbe niente: un progetto che rende ogni pagina a richiesta lo spegne con `features.links: false`. Due limiti: con una `base` i link non si risolvono, e un redirect di `vercel.json` non è una pagina, quindi un link che ci porta passa per rotto, e si corregge puntando alla destinazione.
 
 Per Lighthouse un sito SSR si misura con `check lighthouse <url>`, sulla produzione o su un'anteprima: al posto del server del progetto visita quell'indirizzo, ed è l'unico modo di avere numeri di produzione. `--local` serve i file statici della build, quindi su un sito renderizzato a richiesta si ferma e lo dice, invece di misurare dei 404. Un'anteprima Vercel con la Deployment Protection risponde con la pagina di accesso, e il check non la può misurare: serve la produzione o un'anteprima non protetta. La porta del server locale segue `LH_PORT` sia con `--listen` sia con `--port`.
 
@@ -74,7 +78,7 @@ export default defineConfig({
   icons: { background: SITE.themeColor.light },
   bundle: { budgets: [motion], cssMaxGzip: 14 * 1024 },
   smoke: { checks: [...DEFAULT_CHECKS, checkLanguageRedirect] },
-  features: { analytics: 'required', roadmap: false, botId: 'required' },
+  features: { analytics: 'required', roadmap: false, botId: 'required', links: 'required' },
   routes: { representatives: { '/blog/[slug]': '/blog/ciao-mondo' } },
 })
 ```
@@ -128,7 +132,7 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 
 | Action | Passi | Cosa resta nel workflow del progetto |
 |---|---|---|
-| `actions/ci` | checkout, node, install, `astro sync`, `pnpm run ci`, build, `perf:bundle`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
+| `actions/ci` | checkout, node, install, `astro sync`, `pnpm run ci`, build, `perf:bundle`, `check:links`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci` |
 | `actions/review` | `astro sync`, poi `fallow review` sul diff contro il merge-base | il job informativo |
 | `actions/deploy` | risoluzione del tag, stessa versione di officina, gate, `vercel pull`, `build`, controllo della build, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono |
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |

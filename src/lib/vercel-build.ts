@@ -1,4 +1,5 @@
 import { posix } from 'node:path'
+import { routePattern } from './routes.ts'
 
 export type ServerFile = { path: string; source: string }
 
@@ -17,7 +18,14 @@ type RawStyle = { type?: string; src?: string }
 type RawRoute = {
   scripts?: RawScript[]
   styles?: RawStyle[]
-  routeData?: { route?: unknown; component?: unknown; type?: string; origin?: string; prerender?: boolean }
+  routeData?: {
+    route?: unknown
+    component?: unknown
+    type?: string
+    origin?: string
+    prerender?: boolean
+    pattern?: unknown
+  }
 }
 
 type SsrPage = { scripts: RawScript[]; styles: RawStyle[] | undefined; route: string; component: string }
@@ -138,12 +146,37 @@ function ssrPage({ scripts = [], styles, routeData }: RawRoute): SsrPage[] {
   return typeof route === 'string' && typeof component === 'string' ? [{ scripts, styles, route, component }] : []
 }
 
-export function ssrRoutes(files: readonly ServerFile[]): SsrRoute[] | null {
-  for (const file of files) {
-    const manifest = parseManifest(file.source)
-    if (manifest !== null) return routesOf(file, manifest, files)
+function firstManifest(files: readonly ServerFile[]): { host: ServerFile; manifest: RawManifest } | null {
+  for (const host of files) {
+    const manifest = parseManifest(host.source)
+    if (manifest !== null) return { host, manifest }
   }
   return null
+}
+
+export function ssrRoutes(files: readonly ServerFile[]): SsrRoute[] | null {
+  const found = firstManifest(files)
+  return found === null ? null : routesOf(found.host, found.manifest, files)
+}
+
+// `routePattern` non legge i segmenti misti (`[slug].md`, `post-[id]`), che il pattern del manifest di Astro sì.
+function astroPattern(route: string, pattern: unknown): RegExp {
+  if (typeof pattern === 'string') {
+    try {
+      return new RegExp(pattern)
+    } catch {}
+  }
+  return routePattern(route)
+}
+
+export function onDemandPatterns(files: readonly ServerFile[]): RegExp[] | null {
+  const found = firstManifest(files)
+  if (found === null) return null
+  return (found.manifest.routes ?? []).flatMap(({ routeData }) =>
+    routeData?.prerender === false && typeof routeData.route === 'string'
+      ? [astroPattern(routeData.route, routeData.pattern)]
+      : [],
+  )
 }
 
 function routesOf(host: ServerFile, manifest: RawManifest, files: readonly ServerFile[]): SsrRoute[] {

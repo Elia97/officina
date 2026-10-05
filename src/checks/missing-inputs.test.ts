@@ -8,6 +8,7 @@ import { main as genIcons } from '../gen/icons.ts'
 import { main as checkAnalytics } from './analytics.ts'
 import { main as checkBundle } from './bundle.ts'
 import { main as checkLighthouse } from './lighthouse.ts'
+import { main as checkLinks } from './links.ts'
 import { main as checkSmoke } from './smoke.ts'
 
 const roots: string[] = []
@@ -91,6 +92,12 @@ const CASI: Caso[] = [
     dirs: ['dist/client/_astro'],
     comando: () => checkBundle(),
     nomina: ['src/pages'],
+  },
+  {
+    nome: 'check links senza la build di cui controllare i link',
+    files: config('{}'),
+    comando: () => checkLinks(),
+    nomina: ['dist/client', 'pnpm build'],
   },
   {
     nome: 'check smoke senza le pagine da visitare',

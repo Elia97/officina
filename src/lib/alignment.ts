@@ -22,6 +22,7 @@ export const EXPECTED_SCRIPTS: Readonly<Record<string, string>> = {
   'check:roadmap': 'officina check roadmap',
   'check:placeholders': 'officina check placeholders',
   'perf:bundle': 'officina check bundle',
+  'check:links': 'officina check links',
   'smoke:prod': 'officina check smoke',
   'analytics:verify': 'officina check analytics',
   lhci: 'officina check lighthouse',
@@ -45,14 +46,18 @@ export const CI_STEPS: readonly string[] = [
 
 const MANIFEST = 'package.json'
 
+// TODO: dalla 0.12.0 `check:links` è un errore di doctor: toglilo da NEW_SCRIPTS.
+const NEW_SCRIPTS: ReadonlySet<string> = new Set(['check:links'])
+
 export function scriptGaps({ scripts = {} }: Manifest): ContractGap[] {
   const gaps: ContractGap[] = []
   for (const [name, expected] of Object.entries(EXPECTED_SCRIPTS)) {
     const actual = scripts[name]
+    const severity = NEW_SCRIPTS.has(name) ? { severity: 'warning' as const } : {}
     if (actual === undefined)
-      gaps.push({ path: MANIFEST, message: `script \`${name}\` assente: atteso \`${expected}\`` })
+      gaps.push({ path: MANIFEST, message: `script \`${name}\` assente: atteso \`${expected}\``, ...severity })
     else if (!actual.startsWith(expected))
-      gaps.push({ path: MANIFEST, message: `script \`${name}\` è \`${actual}\`: atteso \`${expected}\`` })
+      gaps.push({ path: MANIFEST, message: `script \`${name}\` è \`${actual}\`: atteso \`${expected}\``, ...severity })
   }
   const ci = scripts.ci ?? ''
   for (const step of CI_STEPS) {
