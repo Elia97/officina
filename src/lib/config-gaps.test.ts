@@ -48,13 +48,12 @@ describe('configGaps', () => {
   })
 })
 
-describe('un controllo nuovo', () => {
-  it('chiede `features.links` come avviso, mentre le voci di prima restano errori', () => {
-    const gaps = configGaps({ ...complete, features: {} })
-    const severity = (name: string) => gaps.find(({ message }) => message.startsWith(`\`features.${name}\``))?.severity
+describe('configGaps e `features.links`', () => {
+  it('dopo la 0.11.0 la chiede come gli altri controlli: non dichiararla è un errore', () => {
+    const gap = configGaps({ ...complete, features: {} }).find(({ message }) => message.startsWith('`features.links`'))
 
-    expect(severity('links')).toBe('warning')
-    expect(severity('analytics')).toBeUndefined()
+    expect(gap).toBeDefined()
+    expect(gap?.severity).toBeUndefined()
   })
 })
 

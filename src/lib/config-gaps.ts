@@ -1,4 +1,4 @@
-import { FEATURES, type FeatureName, type OfficinaConfig } from './config.ts'
+import { FEATURES, type OfficinaConfig } from './config.ts'
 import type { ContractGap } from './contract.ts'
 
 const CONFIG = 'officina.config.ts'
@@ -11,17 +11,11 @@ function siteUrlGap(siteUrl: string | undefined): string | undefined {
   return siteUrl.endsWith('/') ? `\`siteUrl\` finisce con una barra: \`${siteUrl}\`` : undefined
 }
 
-// TODO: dalla 0.12.0 `links` è un errore di doctor: toglila da NEW_FEATURES.
-const NEW_FEATURES: ReadonlySet<FeatureName> = new Set(['links'])
-
 // Il silenzio vale `'required'`: un controllo si spegne dichiarandolo, non dimenticandolo.
 const featureGaps = (config: OfficinaConfig): ContractGap[] =>
-  FEATURES.filter((name) => config.features?.[name] === undefined).map((name) => ({
-    ...asGap(
-      `\`features.${name}\` non dichiarata: vale \`'required'\`, e il gate fallisce se non trova cosa controllare`,
-    ),
-    ...(NEW_FEATURES.has(name) ? { severity: 'warning' as const } : {}),
-  }))
+  FEATURES.filter((name) => config.features?.[name] === undefined).map((name) =>
+    asGap(`\`features.${name}\` non dichiarata: vale \`'required'\`, e il gate fallisce se non trova cosa controllare`),
+  )
 
 const representativeGaps = (patterns: readonly string[]): string[] =>
   patterns.map(
