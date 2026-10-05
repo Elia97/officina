@@ -138,6 +138,15 @@ describe('generatorsSetting', () => {
   })
 })
 
+describe('features.links', () => {
+  it('si legge come gli altri controlli, e rifiuta un valore che non è `required` né false', async () => {
+    expect(await loadConfig(config('{ features: { links: false } }'))).toEqual({ features: { links: false } })
+    await expect(loadConfig(config('{ features: { links: true } }'))).rejects.toThrow(
+      "features.links: atteso 'required' oppure false, ricevuto un booleano",
+    )
+  })
+})
+
 describe('routes.disabled', () => {
   it('si legge come una lista di pattern', async () => {
     expect(await loadConfig(config("{ routes: { disabled: ['/news/[slug]'] } }"))).toEqual({

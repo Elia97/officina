@@ -57,6 +57,22 @@ describe('scriptGaps', () => {
   })
 })
 
+describe('scriptGaps e un requisito nuovo', () => {
+  it('chiede `check:links` come avviso, mentre gli script di prima restano errori', () => {
+    const gaps = scriptGaps({})
+    const severity = (name: string) => gaps.find(({ message }) => message.startsWith(`script \`${name}\``))?.severity
+
+    expect(severity('check:links')).toBe('warning')
+    expect(severity('perf:bundle')).toBeUndefined()
+    expect(scriptGaps({ scripts: { ...alignedScripts(), 'check:links': 'node links.mjs' } })).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('`check:links` è `node links.mjs`'),
+        severity: 'warning',
+      }),
+    ])
+  })
+})
+
 describe('dependencyGaps', () => {
   it('non trova niente con officina fra le devDependencies e senza plop né ts-morph', () => {
     expect(dependencyGaps({ devDependencies: { '@elia97/officina': '^0.4.0' } })).toEqual([])

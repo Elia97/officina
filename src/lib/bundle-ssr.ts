@@ -16,7 +16,7 @@ export type SsrReading = {
   measured: boolean
 }
 
-function readServerFiles(): ServerFile[] {
+export function readServerFiles(): ServerFile[] {
   const read = (path: string): ServerFile => ({ path, source: readFileSync(join(FUNCTIONS, path), 'utf8') })
   const chunks = existsSync(join(FUNCTIONS, 'chunks')) ? readdirSync(join(FUNCTIONS, 'chunks')) : []
   const entry = existsSync(join(FUNCTIONS, 'entry.mjs')) ? ['entry.mjs'] : []

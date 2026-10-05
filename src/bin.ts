@@ -12,6 +12,7 @@ export const CHECKS: Record<string, Loader> = {
   comments: () => import('./checks/comments.ts'),
   language: () => import('./checks/language.ts'),
   lighthouse: () => import('./checks/lighthouse.ts'),
+  links: () => import('./checks/links.ts'),
   placeholders: () => import('./checks/placeholders.ts'),
   roadmap: () => import('./checks/roadmap.ts'),
   routes: () => import('./checks/routes.ts'),
@@ -26,7 +27,7 @@ const USAGE = `Uso:
   officina doctor                   cosa manca al progetto perché i generatori funzionino
 
 Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
-bundle legge dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
+bundle e links leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
 I valori del progetto (URL, budget, header, controlli propri) stanno in officina.config.ts
 `
 
