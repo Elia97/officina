@@ -18,7 +18,7 @@ const EMPTY_HREF = /\bhref:\s*(['"])#\1/
 
 type EnvHit = Omit<Finding, 'path'>
 
-// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@59.22.0: `vercel pull` lo scrive al posto del valore di una Sensitive.
+// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@62.2.0: `vercel pull` lo scrive al posto del valore di una Sensitive.
 const SENSITIVE = '[SENSITIVE]'
 
 const WITHOUT_VALUE = 'il deploy andrebbe online senza il suo valore'
