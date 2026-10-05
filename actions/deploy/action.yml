@@ -99,7 +99,7 @@ runs:
 
     # Pin esatto: la sola major ridà una CLI diversa ogni settimana, e un deploy che fallisce non si
     # riproduce. Che su npm ne esca una più nuova lo dice `.github/workflows/vercel-cli.yml`.
-    - run: pnpm dlx vercel@59.22.0 pull --yes --environment=production
+    - run: pnpm dlx vercel@62.2.0 pull --yes --environment=production
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
@@ -109,7 +109,7 @@ runs:
     - run: pnpm run check:placeholders --env .vercel/.env.production.local
       shell: bash
 
-    - run: pnpm dlx vercel@59.22.0 build --prod
+    - run: pnpm dlx vercel@62.2.0 build --prod
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
@@ -127,7 +127,7 @@ runs:
         VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
         VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
       run: |
-        url=$(pnpm dlx vercel@59.22.0 deploy --prebuilt --prod)
+        url=$(pnpm dlx vercel@62.2.0 deploy --prebuilt --prod)
         echo "url=$url" >> "$GITHUB_OUTPUT"
         echo "Deployment: $url"
 
