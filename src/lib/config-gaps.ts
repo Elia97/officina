@@ -22,13 +22,17 @@ const representativeGaps = (patterns: readonly string[]): string[] =>
       `\`routes.representatives\` non ha un percorso per \`${label}\`: smoke e Lighthouse non guardano quella pagina`,
   )
 
-/**
- * `loaded` è la configurazione letta, l'errore che il suo caricamento ha sollevato, o `undefined` se
- * il file non c'è; `patterns` i pattern dinamici di `src/pages` rimasti senza rappresentante.
- */
+const disabledGaps = (labels: readonly string[]): string[] =>
+  labels.map(
+    (label) =>
+      `\`routes.disabled\` nomina \`${label}\`, che non è una pagina dinamica prerenderizzata di \`src/pages\`: non spegne niente`,
+  )
+
+export type RouteGaps = { missingRepresentatives?: readonly string[]; unknownDisabled?: readonly string[] }
+
 export function configGaps(
   loaded: OfficinaConfig | Error | undefined,
-  patterns: readonly string[] = [],
+  { missingRepresentatives = [], unknownDisabled = [] }: RouteGaps = {},
 ): ContractGap[] {
   if (loaded === undefined) return [{ path: CONFIG, message: 'manca: i valori del progetto per officina stanno qui' }]
   if (loaded instanceof Error) return [{ path: CONFIG, message: `non si carica: ${loaded.message}` }]
@@ -36,7 +40,8 @@ export function configGaps(
     siteUrlGap(loaded.siteUrl),
     loaded.icons === undefined ? '`icons.background` assente: `gen icons` non ha un colore di fondo' : undefined,
     ...featureGaps(loaded),
-    ...representativeGaps(patterns),
+    ...representativeGaps(missingRepresentatives),
+    ...disabledGaps(unknownDisabled),
   ]
   return messages.filter((message) => message !== undefined).map((message) => ({ path: CONFIG, message }))
 }

@@ -20,11 +20,11 @@ import {
   loadConfig,
   type OfficinaConfig,
 } from '../lib/config.ts'
-import { configGaps } from '../lib/config-gaps.ts'
+import { configGaps, type RouteGaps } from '../lib/config-gaps.ts'
 import { type ContractGap, contractGaps } from '../lib/contract.ts'
 import { dependabotGaps } from '../lib/dependabot.ts'
 import { trackedAndUntracked } from '../lib/git.ts'
-import { expectedRoutes, missingRepresentatives, readPageFiles } from '../lib/routes.ts'
+import { expectedRoutes, missingRepresentatives, readPageFiles, unknownDisabled } from '../lib/routes.ts'
 import { toolingGaps } from '../lib/tooling.ts'
 import { packageVersion } from '../lib/versions.ts'
 import { workflowGaps } from '../lib/workflows.ts'
@@ -55,7 +55,7 @@ async function loadedConfig(root: string): Promise<OfficinaConfig | Error | unde
   }
 }
 
-type Section = { title: string; gaps: ContractGap[] } | { title: string; off: string }
+type Section = { title: string; gaps: ContractGap[]; notes?: readonly string[] } | { title: string; off: string }
 
 const HOOK_POINTS = 'punti di aggancio dei generatori'
 const ANCHORS = 'ancoraggi delle pagine a sezioni e dei dizionari'
@@ -85,10 +85,22 @@ function generatorSections(root: string, setting: GeneratorsSetting): Section[] 
   ]
 }
 
-function orphanPatterns(root: string, config: OfficinaConfig | Error | undefined): string[] {
+function routeGaps(root: string, config: OfficinaConfig | Error | undefined): RouteGaps & { disabled: string[] } {
+  if (config === undefined || config instanceof Error) return { disabled: [] }
   const pages = join(root, PAGES)
-  if (!existsSync(pages) || config === undefined || config instanceof Error) return []
-  return missingRepresentatives(expectedRoutes(readPageFiles(pages), pages), config.routes?.representatives)
+  const { representatives, disabled: declared } = config.routes ?? {}
+  const expected = expectedRoutes(existsSync(pages) ? readPageFiles(pages) : [], pages, declared)
+  return {
+    missingRepresentatives: missingRepresentatives(expected, representatives),
+    unknownDisabled: unknownDisabled(expected, declared),
+    disabled: expected.disabled.map(({ label }) => label),
+  }
+}
+
+function configSection(root: string, config: OfficinaConfig | Error | undefined): Section {
+  const { disabled, ...gaps } = routeGaps(root, config)
+  const notes = disabled.length === 0 ? [] : [`spente da \`routes.disabled\`: ${disabled.join(', ')}`]
+  return { title: 'officina.config.ts', gaps: configGaps(config, gaps), notes }
 }
 
 export async function main(): Promise<number> {
@@ -110,7 +122,7 @@ export async function main(): Promise<number> {
       title: 'workflow di GitHub e Dependabot',
       gaps: [...workflowGaps(files, version), ...dependabotGaps(files)],
     },
-    { title: 'officina.config.ts', gaps: configGaps(config, orphanPatterns(root, config)) },
+    configSection(root, config),
   ]
 
   console.log(`\nofficina doctor ${version} — cosa manca al progetto per prendere tutto da fuori\n`)
@@ -124,6 +136,7 @@ export async function main(): Promise<number> {
     console.log(gaps.length === 0 ? `  ✓ ${title}` : `  ${title}: ${gaps.length}`)
     const sectionFindings = gaps.map((gap): Finding => ({ ...gap, severity: gap.severity ?? 'error' }))
     printFindings(sectionFindings, cliOptions([]).format)
+    for (const note of section.notes ?? []) console.log(`    · ${note}`)
     findings.push(...sectionFindings)
   }
   console.log(

@@ -137,3 +137,20 @@ describe('generatorsSetting', () => {
     )
   })
 })
+
+describe('routes.disabled', () => {
+  it('si legge come una lista di pattern', async () => {
+    expect(await loadConfig(config("{ routes: { disabled: ['/news/[slug]'] } }"))).toEqual({
+      routes: { disabled: ['/news/[slug]'] },
+    })
+  })
+
+  it('una voce che non è una lista di stringhe si rifiuta, nominandola', async () => {
+    await expect(loadConfig(config("{ routes: { disabled: '/news/[slug]' } }"))).rejects.toThrow(
+      'routes.disabled: atteso un array, ricevuto una stringa',
+    )
+    await expect(loadConfig(config('{ routes: { disabled: [1] } }'))).rejects.toThrow(
+      'routes.disabled[0]: atteso una stringa, ricevuto un numero',
+    )
+  })
+})
