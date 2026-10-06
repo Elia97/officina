@@ -9,6 +9,7 @@ import { main as checkAnalytics } from './analytics.ts'
 import { main as checkBundle } from './bundle.ts'
 import { main as checkLighthouse } from './lighthouse.ts'
 import { main as checkLinks } from './links.ts'
+import { main as checkSecrets } from './secrets.ts'
 import { main as checkSmoke } from './smoke.ts'
 
 const roots: string[] = []
@@ -104,6 +105,21 @@ const CASI: Caso[] = [
     files: config("{ siteUrl: 'https://acme.test' }"),
     comando: () => checkSmoke([]),
     nomina: ['src/pages'],
+  },
+  {
+    nome: 'check secrets senza la configurazione di Astro che porta lo schema',
+    files: {},
+    comando: async () => checkSecrets([]),
+    nomina: ['astro.config.mjs', 'env.schema'],
+  },
+  {
+    nome: 'check secrets con le chiavi segrete ma senza la build in cui cercarle',
+    files: {
+      'astro.config.mjs':
+        "export default { env: { schema: { K: envField.string({ context: 'server', access: 'secret' }) } } }\n",
+    },
+    comando: async () => checkSecrets([]),
+    nomina: ['dist/client', 'pnpm build'],
   },
 ]
 
