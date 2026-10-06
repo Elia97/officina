@@ -1,8 +1,9 @@
+import { parse } from 'yaml'
+
 import type { ProjectFiles } from './alignment.ts'
 import type { ContractGap } from './contract.ts'
+import { isRecord } from './validate.ts'
 
-// Niente parser YAML nel pacchetto: la ricerca è testuale. Una riga commentata non soddisfa nessun
-// controllo, altrimenti basta commentare un passo per avere un progetto «a posto» che non lo lancia.
 export const isLive = (line: string): boolean => !line.trimStart().startsWith('#')
 
 const liveLines = (source: string): string[] => source.split(/\r?\n/).filter(isLive)
@@ -45,8 +46,10 @@ function refGap(line: string, ref: string, name: string, expected: string): stri
     : `\`${name}@${ref.slice(0, 7)}… ${declared}\`: il pacchetto installato è la ${expected.slice(1)}`
 }
 
+const actionName = (action: string): string => `Elia97/officina/actions/${action}`
+
 function actionGap(source: string | undefined, action: string, version: string): string | undefined {
-  const name = `Elia97/officina/actions/${action}`
+  const name = actionName(action)
   if (source === undefined) return `manca: i suoi passi arrivano da \`${name}\``
   const found = refOf(source, name)
   return found === undefined ? `non usa \`${name}\`` : refGap(found.line, found.ref, name, `v${version}`)
@@ -58,4 +61,47 @@ export function workflowGaps({ read }: ProjectFiles, version: string): ContractG
     const message = actionGap(read(workflow), action, version)
     return message === undefined ? [] : [{ path: workflow, message }]
   })
+}
+
+export interface ActionInputs {
+  workflow: string
+  action: string
+  inputs: readonly { name: string; reason: string }[]
+}
+
+function parsed(source: string): { workflow: unknown } | { error: string } {
+  try {
+    return { workflow: parse(source) }
+  } catch (error) {
+    return { error: `non è YAML valido: ${String(error).replace(/\n[\s\S]*$/, '')}` }
+  }
+}
+
+function stepsUsing(source: string, action: string): Record<string, unknown>[] | string {
+  const result = parsed(source)
+  if ('error' in result) return result.error
+  const { workflow } = result
+  const jobs = isRecord(workflow) && isRecord(workflow.jobs) ? Object.values(workflow.jobs) : []
+  return jobs
+    .flatMap((job) => (isRecord(job) && Array.isArray(job.steps) ? job.steps : []))
+    .filter((step) => isRecord(step) && String(step.uses).startsWith(`${actionName(action)}@`))
+}
+
+const receives = (step: Record<string, unknown>, input: string): boolean => {
+  const value = isRecord(step.with) ? step.with[input] : undefined
+  return value !== undefined && value !== null && value !== ''
+}
+
+/** Un workflow che non usa l'action lo segnala già `workflowGaps`. */
+export function actionInputGaps({ read }: ProjectFiles, { workflow, action, inputs }: ActionInputs): ContractGap[] {
+  const source = read(workflow)
+  if (source === undefined) return []
+  const steps = stepsUsing(source, action)
+  if (typeof steps === 'string') return [{ path: workflow, message: steps }]
+  return inputs
+    .filter(({ name }) => steps.some((step) => !receives(step, name)))
+    .map(({ name, reason }) => ({
+      path: workflow,
+      message: `\`${actionName(action)}\` non riceve \`${name}\`: ${reason}`,
+    }))
 }

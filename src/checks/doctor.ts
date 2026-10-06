@@ -9,11 +9,14 @@ import {
   type Manifest,
   type ProjectFiles,
   presetGaps,
+  readManifest,
   scriptGaps,
 } from '../lib/alignment.ts'
 import { anchorGaps } from '../lib/anchors.ts'
 import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts'
 import {
+  featuresOffByChoice,
+  featuresOn,
   findConfigFile,
   type GeneratorsSetting,
   generatorsSetting,
@@ -22,6 +25,7 @@ import {
 } from '../lib/config.ts'
 import { configGaps, type RouteGaps } from '../lib/config-gaps.ts'
 import { type ContractGap, contractGaps } from '../lib/contract.ts'
+import { databaseAuthGaps } from '../lib/database-auth.ts'
 import { dependabotGaps } from '../lib/dependabot.ts'
 import { trackedAndUntracked } from '../lib/git.ts'
 import { expectedRoutes, missingRepresentatives, readPageFiles, unknownDisabled } from '../lib/routes.ts'
@@ -35,14 +39,6 @@ function projectFiles(root: string): ProjectFiles {
   return {
     paths: trackedAndUntracked(),
     read: (path) => (existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : undefined),
-  }
-}
-
-function readManifest(files: ProjectFiles): Manifest {
-  try {
-    return JSON.parse(files.read('package.json') ?? '{}') as Manifest
-  } catch {
-    return {}
   }
 }
 
@@ -103,6 +99,16 @@ function configSection(root: string, config: OfficinaConfig | Error | undefined)
   return { title: 'officina.config.ts', gaps: configGaps(config, gaps), notes }
 }
 
+const DATABASE_AUTH = 'database e autenticazione'
+
+function databaseAuthSections(files: ProjectFiles, config: OfficinaConfig, manifest: Manifest): Section[] {
+  const on = featuresOn(config, manifest)
+  const off = featuresOffByChoice(config, manifest).map((name) => `\`features.${name}: false\``)
+  if (on.length === 0) return off.length === 0 ? [] : [{ title: DATABASE_AUTH, off: off.join(' e ') }]
+  const notes = off.map((setting) => `spenta da ${setting}`)
+  return [{ title: DATABASE_AUTH, gaps: databaseAuthGaps(files, manifest, on), notes }]
+}
+
 export async function main(): Promise<number> {
   const root = process.cwd()
   const files = projectFiles(root)
@@ -123,6 +129,7 @@ export async function main(): Promise<number> {
       gaps: [...workflowGaps(files, version), ...dependabotGaps(files)],
     },
     configSection(root, config),
+    ...databaseAuthSections(files, usable(config), manifest),
   ]
 
   console.log(`\nofficina doctor ${version} — cosa manca al progetto per prendere tutto da fuori\n`)

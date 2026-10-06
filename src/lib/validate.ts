@@ -2,7 +2,7 @@
 // e quello che serve è il percorso della voce sbagliata, non «la configurazione non è valida».
 export type Check = (value: unknown, path: string) => string[]
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const NAMES = new Map<string, string>([

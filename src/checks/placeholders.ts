@@ -3,15 +3,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import process from 'node:process'
 import { parseArgs } from 'node:util'
 
+import { readManifest } from '../lib/alignment.ts'
 import {
-  contactEnvKeys,
   envFindings,
   outputFindings,
   placeholderSources,
+  requiredEnvKeys,
   sourceFindings,
 } from '../lib/check-placeholders.ts'
 import { cliOptions, exitCode, type Finding, printFindings } from '../lib/cli.ts'
-import { loadConfig, type OfficinaConfig } from '../lib/config.ts'
+import { type DependencyFeature, featuresOn, loadConfig, type OfficinaConfig } from '../lib/config.ts'
 
 const MISSING_SOURCE = 'sorgente assente: `placeholders.sources` in officina.config.ts dice quali file guardare'
 
@@ -41,6 +42,16 @@ interface Scan {
   advice: string
 }
 
+const projectFile = (path: string): string | undefined => (existsSync(path) ? readFileSync(path, 'utf8') : undefined)
+
+const ENV_ADVICE =
+  'Da impostare su Vercel, fra le variabili di produzione, prima del deploy: quali pretendere lo dice `placeholders.contactEnvKeys` in officina.config.ts'
+
+function envAdvice(on: readonly DependencyFeature[]): string {
+  if (on.length === 0) return ENV_ADVICE
+  return `${ENV_ADVICE}, più le chiavi che pretendono ${on.map((name) => `\`features.${name}\``).join(' e ')}`
+}
+
 function scan(env: string | undefined, output: string | undefined, config: OfficinaConfig): Scan {
   if (output !== undefined) {
     return {
@@ -52,12 +63,12 @@ function scan(env: string | undefined, output: string | undefined, config: Offic
     }
   }
   if (env !== undefined) {
+    const manifest = readManifest({ read: projectFile })
     return {
       scope: `ambiente in ${env}`,
-      findings: envScan(env, contactEnvKeys(config)),
+      findings: envScan(env, requiredEnvKeys(config, manifest)),
       clean: 'Nessun segnaposto del template.',
-      advice:
-        'Da impostare su Vercel, fra le variabili di produzione, prima del deploy: quali pretendere lo dice `placeholders.contactEnvKeys` in officina.config.ts',
+      advice: envAdvice(featuresOn(config, manifest)),
     }
   }
   const paths = placeholderSources(config)

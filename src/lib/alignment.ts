@@ -126,7 +126,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 // I file JSON si leggono come JSON: `"hooks"` dentro un valore qualunque non è un blocco `hooks`,
 // e un file illeggibile non è un file che dichiara quello che si cerca.
-function readJson({ read }: ProjectFiles, path: string): Record<string, unknown> | undefined {
+function readJson({ read }: Pick<ProjectFiles, 'read'>, path: string): Record<string, unknown> | undefined {
   const source = read(path)
   if (source === undefined) return undefined
   try {
@@ -136,6 +136,9 @@ function readJson({ read }: ProjectFiles, path: string): Record<string, unknown>
     return undefined
   }
 }
+
+export const readManifest = (files: Pick<ProjectFiles, 'read'>): Manifest =>
+  (readJson(files, MANIFEST) ?? {}) as Manifest
 
 export function leftoverGaps(files: ProjectFiles): ContractGap[] {
   const gaps: ContractGap[] = LEFTOVERS.filter(({ path }) => holds(files.paths, path)).map(({ path, reason }) => ({
