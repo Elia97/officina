@@ -82,7 +82,7 @@ describe('un progetto che tiene i propri dati fuori dai moduli del template', ()
 
     expect(exitCode).toBe(1)
     expect(output).toContain("CONTACT_FROM_NAME non c'è fra le variabili di produzione su Vercel")
-    expect(output).toContain('`placeholders.contactEnvKeys` in officina.config.ts')
+    expect(output).toContain('`placeholders.contactEnvKeys` in officina.config.ts.')
     expect(output).not.toContain('astro.config.mjs')
     expect(output).not.toContain('deploy-ops.md')
   })
@@ -142,5 +142,24 @@ describe('una variabile Sensitive nel file di vercel pull', () => {
 
     expect(exitCode).toBe(1)
     expect(lines.join('\n')).toContain('.vercel/output: cartella della build assente: la scrive vercel build')
+  })
+})
+
+describe('un progetto con database e autenticazione', () => {
+  it('con --env pretende le chiavi del database, delle migrazioni e dell’autenticazione', async () => {
+    const root = project({
+      'officina.config.mjs': config('{ placeholders: { contactEnvKeys: [] } }'),
+      'package.json': JSON.stringify({ dependencies: { 'drizzle-orm': '^0.45.2', 'better-auth': '^1.7.3' } }),
+      '.env.production.local': 'DATABASE_URL="postgres://acme.test/negozio"\n',
+    })
+
+    const { exitCode, lines } = await run(root, ['--env', '.env.production.local'])
+    const output = lines.join('\n')
+
+    expect(exitCode).toBe(1)
+    expect(output).toContain("DATABASE_URL_UNPOOLED non c'è fra le variabili di produzione su Vercel")
+    expect(output).toContain("BETTER_AUTH_SECRET non c'è fra le variabili di produzione su Vercel")
+    expect(output).not.toContain("DATABASE_URL non c'è")
+    expect(output).toContain('più le chiavi che pretendono `features.database` e `features.auth`.')
   })
 })

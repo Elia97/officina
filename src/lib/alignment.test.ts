@@ -10,6 +10,7 @@ import {
   leftoverGaps,
   type ProjectFiles,
   presetGaps,
+  readManifest,
   scriptGaps,
 } from './alignment.ts'
 
@@ -180,5 +181,16 @@ describe('presetGaps e lo $schema di Biome', () => {
 
   it('non chiede niente con lo schema del pacchetto installato', () => {
     expect(presetGaps(withSchema(BIOME_SCHEMA))).toEqual([])
+  })
+})
+
+describe('readManifest', () => {
+  it('legge package.json, e uno assente, illeggibile o che non è un oggetto non dichiara niente', () => {
+    const manifest = (source: string) => readManifest(files([], { 'package.json': source }))
+
+    expect(manifest('{ "scripts": { "ci": "pnpm run doctor" } }')).toEqual({ scripts: { ci: 'pnpm run doctor' } })
+    expect(manifest('{ "scripts": ')).toEqual({})
+    expect(manifest('null')).toEqual({})
+    expect(readManifest(files([]))).toEqual({})
   })
 })

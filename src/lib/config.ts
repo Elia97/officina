@@ -2,10 +2,21 @@ import { existsSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import type { Manifest } from './alignment.ts'
 import type { Budget } from './bundle-budget.ts'
 import type { Representatives, VerifiedRoute } from './routes.ts'
 import type { SmokeCheck } from './smoke-production.ts'
-import { aFunction, aNumber, anArrayOf, aRecordOf, aShape, aString, aStringOrNull, oneOf } from './validate.ts'
+import {
+  aFunction,
+  aNumber,
+  anArrayOf,
+  aRecordOf,
+  aShape,
+  aString,
+  aStringOrNull,
+  isRecord,
+  oneOf,
+} from './validate.ts'
 
 /** `'required'` fa fallire il gate quando ciò che deve controllare non c'è; `false` lo spegne. */
 export type FeatureSetting = 'required' | false
@@ -23,15 +34,22 @@ export interface OfficinaConfig {
     checks?: readonly SmokeCheck[]
   }
   analytics?: { linkTracking?: string }
-  /** Quali controlli il progetto pretende. Una voce non dichiarata vale `'required'`. */
+  /**
+   * Quali controlli il progetto pretende. Una voce non dichiarata vale `'required'`, tranne `database`
+   * e `auth`, che senza dichiarazione seguono le dipendenze di `package.json`.
+   */
   features?: {
     analytics?: FeatureSetting
     roadmap?: FeatureSetting
     generators?: GeneratorsSetting
     botId?: FeatureSetting
     links?: FeatureSetting
+    database?: FeatureSetting
+    auth?: FeatureSetting
   }
   placeholders?: { sources?: readonly string[]; contactEnvKeys?: readonly string[] }
+  /** La variabile con cui girano le migrazioni; senza dichiarazione, `DATABASE_URL_UNPOOLED`. */
+  database?: { migrationUrlKey?: string }
   routes?: {
     /** Per ogni pattern dinamico di `src/pages`, un percorso vero che smoke e Lighthouse visitano. */
     representatives?: Representatives
@@ -50,6 +68,36 @@ export const isRequired = (config: OfficinaConfig, name: FeatureName): boolean =
 export const generatorsSetting = (config: OfficinaConfig): GeneratorsSetting =>
   config.features?.generators ?? 'required'
 
+export const DEPENDENCY_FEATURES = {
+  database: { dependency: 'drizzle-orm', secret: 'DATABASE_URL' },
+  auth: { dependency: 'better-auth', secret: 'BETTER_AUTH_SECRET' },
+} as const
+
+export type DependencyFeature = keyof typeof DEPENDENCY_FEATURES
+
+const DEPENDENCY_FEATURE_NAMES = Object.keys(DEPENDENCY_FEATURES) as DependencyFeature[]
+
+const declares = (dependencies: unknown, name: string): boolean => isRecord(dependencies) && name in dependencies
+
+const dependsOn = ({ dependencies, devDependencies }: Manifest, name: DependencyFeature): boolean => {
+  const { dependency } = DEPENDENCY_FEATURES[name]
+  return declares(dependencies, dependency) || declares(devDependencies, dependency)
+}
+
+export function isOn(config: OfficinaConfig, manifest: Manifest, name: DependencyFeature): boolean {
+  const declared = config.features?.[name]
+  return declared === undefined ? dependsOn(manifest, name) : declared === 'required'
+}
+
+export const featuresOn = (config: OfficinaConfig, manifest: Manifest): DependencyFeature[] =>
+  DEPENDENCY_FEATURE_NAMES.filter((name) => isOn(config, manifest, name))
+
+export const featuresOffByChoice = (config: OfficinaConfig, manifest: Manifest): DependencyFeature[] =>
+  DEPENDENCY_FEATURE_NAMES.filter((name) => config.features?.[name] === false && dependsOn(manifest, name))
+
+export const migrationUrlKey = (config: OfficinaConfig): string =>
+  config.database?.migrationUrlKey ?? 'DATABASE_URL_UNPOOLED'
+
 const budget = aShape({ label: aString, matches: aFunction, maxGzip: aNumber })
 const verifiedRoute = aShape({ path: aString, type: aString })
 const feature = oneOf("'required' oppure false", ['required', false])
@@ -65,8 +113,17 @@ const SHAPE = aShape({
     checks: anArrayOf(aFunction),
   }),
   analytics: aShape({ linkTracking: aString }),
-  features: aShape({ analytics: feature, roadmap: feature, generators, botId: feature, links: feature }),
+  features: aShape({
+    analytics: feature,
+    roadmap: feature,
+    generators,
+    botId: feature,
+    links: feature,
+    database: feature,
+    auth: feature,
+  }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
+  database: aShape({ migrationUrlKey: aString }),
   routes: aShape({ representatives: aRecordOf(aString), disabled: anArrayOf(aString) }),
 })
 

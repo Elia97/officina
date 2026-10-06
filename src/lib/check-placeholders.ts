@@ -2,8 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseEnv } from 'node:util'
 
+import type { Manifest } from './alignment.ts'
 import { type Finding, type Hit, readLines } from './cli.ts'
-import type { OfficinaConfig } from './config.ts'
+import { DEPENDENCY_FEATURES, featuresOn, migrationUrlKey, type OfficinaConfig } from './config.ts'
 
 const DICTIONARIES = 'src/i18n/strings'
 const DEFAULT_SOURCES: readonly string[] = ['src/lib/site.ts', 'src/lib/company.ts']
@@ -39,6 +40,13 @@ export function placeholderSources(config: OfficinaConfig = {}): string[] {
 
 export const contactEnvKeys = (config: OfficinaConfig = {}): readonly string[] =>
   config.placeholders?.contactEnvKeys ?? CONTACT_ENV_KEYS
+
+export function requiredEnvKeys(config: OfficinaConfig, manifest: Manifest): string[] {
+  const on = featuresOn(config, manifest)
+  const secrets = on.map((name) => DEPENDENCY_FEATURES[name].secret)
+  const migration = on.includes('database') ? [migrationUrlKey(config)] : []
+  return [...new Set([...contactEnvKeys(config), ...secrets, ...migration])]
+}
 
 function literalFindings(value: string): string[] {
   const messages: string[] = []
