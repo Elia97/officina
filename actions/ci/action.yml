@@ -33,6 +33,9 @@ runs:
     - run: pnpm run ci
       shell: bash
 
+    - run: pnpm exec officina check secrets --canaries >> "$GITHUB_ENV"
+      shell: bash
+
     - run: pnpm run build
       shell: bash
 
@@ -41,6 +44,10 @@ runs:
       shell: bash
 
     - run: pnpm run check:links
+      shell: bash
+
+    # TODO: dalla 0.13.0 `check:secrets` è un errore di doctor: togli --if-present.
+    - run: pnpm run --if-present check:secrets
       shell: bash
 
     - name: Cache del browser di Playwright

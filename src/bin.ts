@@ -16,6 +16,7 @@ export const CHECKS: Record<string, Loader> = {
   placeholders: () => import('./checks/placeholders.ts'),
   roadmap: () => import('./checks/roadmap.ts'),
   routes: () => import('./checks/routes.ts'),
+  secrets: () => import('./checks/secrets.ts'),
   smoke: () => import('./checks/smoke.ts'),
   'vercel-cli': () => import('./checks/vercel-cli.ts'),
 }
@@ -27,7 +28,7 @@ const USAGE = `Uso:
   officina doctor                   cosa manca al progetto perché i generatori funzionino
 
 Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
-bundle e links leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
+bundle, links e secrets leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
 I valori del progetto (URL, budget, header, controlli propri) stanno in officina.config.ts
 `
 

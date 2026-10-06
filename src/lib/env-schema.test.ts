@@ -16,18 +16,20 @@ export default defineConfig({
       'BETTER_AUTH_SECRET': envField.string({ context: 'server', access: 'secret' }),
       PUBLIC_GTM_ID: envField.string({ context: 'client', access: 'public', optional: true }),
       BOTID_ENFORCE: envField.boolean({ context: 'server', access: 'public', default: false }),
+      DIRECT_URL: envField.string({ context: 'server', access: 'secret', url: true }),
     },
   },
 })
 `
 
 describe('envSchema', () => {
-  it('legge chiave, context e access di ogni envField, anche con la chiave fra apici', () => {
+  it('legge chiave, tipo, context, access e validazioni di ogni envField, anche con la chiave fra apici', () => {
     expect(envSchema(CONFIG)).toEqual([
-      { key: 'DATABASE_URL', context: 'server', access: 'secret' },
-      { key: 'BETTER_AUTH_SECRET', context: 'server', access: 'secret' },
-      { key: 'PUBLIC_GTM_ID', context: 'client', access: 'public' },
-      { key: 'BOTID_ENFORCE', context: 'server', access: 'public' },
+      { key: 'DATABASE_URL', type: 'string', context: 'server', access: 'secret', constrained: false },
+      { key: 'BETTER_AUTH_SECRET', type: 'string', context: 'server', access: 'secret', constrained: false },
+      { key: 'PUBLIC_GTM_ID', type: 'string', context: 'client', access: 'public', constrained: false },
+      { key: 'BOTID_ENFORCE', type: 'boolean', context: 'server', access: 'public', constrained: false },
+      { key: 'DIRECT_URL', type: 'string', context: 'server', access: 'secret', constrained: true },
     ])
   })
 
@@ -52,9 +54,9 @@ export default defineConfig({
 `
 
     expect(envSchema(source)).toEqual([
-      { key: 'A', context: undefined, access: undefined },
-      { key: 'B', context: undefined, access: 'secret' },
-      { key: 'C', context: undefined, access: 'secret' },
+      { key: 'A', type: 'string', context: undefined, access: undefined, constrained: false },
+      { key: 'B', type: 'string', context: undefined, access: 'secret', constrained: false },
+      { key: 'C', type: 'string', context: undefined, access: 'secret', constrained: false },
     ])
   })
 })
