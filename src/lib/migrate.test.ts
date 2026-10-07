@@ -57,14 +57,14 @@ describe("l'indirizzo dal file di vercel pull", () => {
     [
       'assente',
       '',
-      "non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel, Encrypted e collegata a Production",
+      "non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel come Config, collegata a Production: senza `--type config` la CLI la crea Secret",
     ],
     ['vuota', 'DATABASE_URL_UNPOOLED=""\n', EMPTY],
     ['di soli spazi', 'DATABASE_URL_UNPOOLED="   "\n', EMPTY],
     [
-      'Sensitive',
+      'Secret',
       'DATABASE_URL_UNPOOLED="[SENSITIVE]"\n',
-      'è Sensitive su Vercel, e vercel pull non ne scarica il valore: va Encrypted, collegata a Production',
+      'è Secret su Vercel, e vercel pull non ne scarica il valore: va tolta e riaggiunta come Config, collegata a Production',
     ],
   ])('con la chiave %s non dà un indirizzo, e dice cosa fare su Vercel', (_, line, message) => {
     expect(fileMigrationEnv({}, `${PULLED}${line}`, 'DATABASE_URL_UNPOOLED')).toEqual({

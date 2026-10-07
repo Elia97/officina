@@ -57,9 +57,9 @@ function scan(env: string | undefined, output: string | undefined, config: Offic
     return {
       scope: `build in ${output}`,
       findings: outputScan(output),
-      clean: 'Nessuna variabile Sensitive entrata nella build.',
+      clean: 'Nessuna variabile Secret entrata nella build.',
       advice:
-        'Una variabile che la build legge non può essere Sensitive su Vercel: portala a Encrypted, o leggila a runtime',
+        'Una variabile che la build legge non può essere Secret su Vercel: va tolta e riaggiunta come Config, o letta a runtime',
     }
   }
   if (env !== undefined) {

@@ -19,7 +19,7 @@ const EMPTY_HREF = /\bhref:\s*(['"])#\1/
 
 type EnvHit = Omit<Finding, 'path'>
 
-// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@62.2.0: `vercel pull` lo scrive al posto del valore di una Sensitive.
+// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@62.2.0: `vercel pull` lo scrive al posto del valore di una Secret.
 export const SENSITIVE = '[SENSITIVE]'
 
 const WITHOUT_VALUE = 'il deploy andrebbe online senza il suo valore'
@@ -83,7 +83,7 @@ export function envFindings(content: string, keys: readonly string[]): EnvHit[] 
     if (value === SENSITIVE)
       return hit(
         'warning',
-        'è Sensitive su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
+        'è Secret su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
       )
     if (value === '') return hit('error', `è vuota: ${WITHOUT_VALUE}`)
     if (TOKEN.test(value) || DOMAIN.test(value)) return hit('error', 'porta un segnaposto del template')
@@ -106,6 +106,6 @@ export const outputFindings = (dir: string): Finding[] =>
       (path): Finding => ({
         path,
         severity: 'error',
-        message: `contiene ${SENSITIVE}, il segnaposto che vercel pull scrive per una variabile Sensitive: la build l'ha incorporato al posto del valore`,
+        message: `contiene ${SENSITIVE}, il segnaposto che vercel pull scrive per una variabile Secret: la build l'ha incorporato al posto del valore`,
       }),
     )

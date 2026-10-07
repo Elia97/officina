@@ -22,7 +22,7 @@ export function fileMigrationEnv(env: Env, content: string, key: string): Migrat
   const value = parseEnv(content)[key]
   if (value === undefined) {
     return {
-      error: `\`${key}\` non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel, Encrypted e collegata a Production`,
+      error: `\`${key}\` non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel come Config, collegata a Production: senza \`--type config\` la CLI la crea Secret`,
     }
   }
   // `vercel build` 62.2.0 rilegge il file con dotenv@4, che fa `trim()` sul valore.
@@ -34,7 +34,7 @@ export function fileMigrationEnv(env: Env, content: string, key: string): Migrat
   }
   if (url === SENSITIVE) {
     return {
-      error: `\`${key}\` è Sensitive su Vercel, e vercel pull non ne scarica il valore: va Encrypted, collegata a Production`,
+      error: `\`${key}\` è Secret su Vercel, e vercel pull non ne scarica il valore: va tolta e riaggiunta come Config, collegata a Production`,
     }
   }
   return { env: { ...env, [key]: url }, url }

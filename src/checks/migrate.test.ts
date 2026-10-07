@@ -123,14 +123,14 @@ describe('officina migrate --env', () => {
     expect(fromTest.stderr).toBe(`::add-mask::${TEST_URL}\n`)
   })
 
-  it('senza il file, o con la chiave Sensitive, non lancia lo script ed esce 1', () => {
+  it('senza il file, o con la chiave Secret, non lancia lo script ed esce 1', () => {
     const missing = migrate(project(), {}, ['--env', PULLED])
     const sensitive = migrate(pulled('DATABASE_URL_UNPOOLED="[SENSITIVE]"\n'), {}, ['--env', PULLED])
 
     expect(missing.status).toBe(1)
     expect(missing.stderr).toContain(`✗ ${PULLED} non c'è: lo scrive vercel pull, prima delle migrazioni.`)
     expect(sensitive.status).toBe(1)
-    expect(sensitive.stderr).toContain('✗ `DATABASE_URL_UNPOOLED` è Sensitive su Vercel')
+    expect(sensitive.stderr).toContain('✗ `DATABASE_URL_UNPOOLED` è Secret su Vercel')
     expect(`${missing.stdout}${sensitive.stdout}`).toBe('')
   })
 })

@@ -140,7 +140,7 @@ describe('envFindings', () => {
 })
 
 describe('envFindings sul file che scrive vercel pull', () => {
-  it('nel file di vercel@59.22.0 pull distingue la Sensitive, che non si verifica, dalla chiave che manca', () => {
+  it('nel file di vercel@59.22.0 pull distingue la Secret, che non si verifica, dalla chiave che manca', () => {
     const pulled = readFileSync(new URL('./test-helpers/vercel-pull-59.22.0.env', import.meta.url), 'utf8')
 
     expect(envFindings(pulled, DEFAULT_KEYS)).toEqual([
@@ -148,7 +148,7 @@ describe('envFindings sul file che scrive vercel pull', () => {
         line: 2,
         severity: 'warning',
         message:
-          'CONTACT_FROM_EMAIL è Sensitive su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
+          'CONTACT_FROM_EMAIL è Secret su Vercel: vercel pull non ne scarica il valore, e il deploy non lo può verificare',
       },
       {
         severity: 'error',
