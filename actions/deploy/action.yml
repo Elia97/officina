@@ -1,9 +1,9 @@
 name: officina deploy
 description: La produzione esce da un tag di release — gate, build di Vercel, deploy e smoke sull'apice.
 
-# [HARD] I tre segreti entrano come input e finiscono nell'`env` dei soli tre passi che li usano.
+# [HARD] I segreti entrano come input e finiscono nell'`env` dei soli passi che li usano.
 # Nell'`env` del job li vedrebbero anche `pnpm install` e gli script di installazione di ogni
-# dipendenza, che girano codice di terzi con in mano un token di deploy.
+# dipendenza, che girano codice di terzi con in mano un token di deploy o il database di produzione.
 inputs:
   ref:
     description: 'Tag di release da deployare (vuoto = il tag più recente)'
@@ -19,7 +19,11 @@ inputs:
     description: 'ID del progetto Vercel: il progetto passa il proprio segreto VERCEL_PROJECT_ID'
     required: true
   migrate:
-    description: 'Lo script delle migrazioni, per esempio `db:migrate`: le applica alla produzione dopo `vercel pull` e prima di `vercel build`'
+    description: "Lo script delle migrazioni, per esempio `db:migrate`: le applica alla produzione, con l'indirizzo di `database-url`, prima di `vercel build`"
+    required: false
+    default: ''
+  database-url:
+    description: "L'indirizzo di produzione per le migrazioni: il progetto passa il proprio segreto PRODUCTION_DATABASE_URL, dell'environment production"
     required: false
     default: ''
 
@@ -118,7 +122,8 @@ runs:
       shell: bash
       env:
         MIGRATE: ${{ inputs.migrate }}
-      run: pnpm exec officina migrate --env .vercel/.env.production.local --script "$MIGRATE"
+        PRODUCTION_DATABASE_URL: ${{ inputs.database-url }}
+      run: pnpm exec officina migrate --production --script "$MIGRATE"
 
     - run: pnpm dlx vercel@62.2.0 build --prod
       shell: bash

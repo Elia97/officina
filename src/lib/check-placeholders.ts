@@ -4,7 +4,7 @@ import { parseEnv } from 'node:util'
 
 import type { Manifest } from './alignment.ts'
 import { type Finding, type Hit, readLines } from './cli.ts'
-import { DEPENDENCY_FEATURES, featuresOn, migrationUrlKey, type OfficinaConfig } from './config.ts'
+import { DEPENDENCY_FEATURES, featuresOn, type OfficinaConfig } from './config.ts'
 
 const DICTIONARIES = 'src/i18n/strings'
 const DEFAULT_SOURCES: readonly string[] = ['src/lib/site.ts', 'src/lib/company.ts']
@@ -20,7 +20,7 @@ const EMPTY_HREF = /\bhref:\s*(['"])#\1/
 type EnvHit = Omit<Finding, 'path'>
 
 // `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@62.2.0: `vercel pull` lo scrive al posto del valore di una Secret.
-export const SENSITIVE = '[SENSITIVE]'
+const SENSITIVE = '[SENSITIVE]'
 
 const WITHOUT_VALUE = 'il deploy andrebbe online senza il suo valore'
 
@@ -44,8 +44,7 @@ export const contactEnvKeys = (config: OfficinaConfig = {}): readonly string[] =
 export function requiredEnvKeys(config: OfficinaConfig, manifest: Manifest): string[] {
   const on = featuresOn(config, manifest)
   const secrets = on.map((name) => DEPENDENCY_FEATURES[name].secret)
-  const migration = on.includes('database') ? [migrationUrlKey(config)] : []
-  return [...new Set([...contactEnvKeys(config), ...secrets, ...migration])]
+  return [...new Set([...contactEnvKeys(config), ...secrets])]
 }
 
 function literalFindings(value: string): string[] {

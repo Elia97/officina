@@ -18,14 +18,31 @@ const CI_INPUTS: ActionInputs = {
   action: 'ci',
   inputs: [
     { name: 'migrate', reason: 'il branch di test non si migra prima dei test' },
-    { name: 'database-url', reason: 'i test di integrazione si saltano' },
+    {
+      name: 'database-url',
+      reason: 'i test di integrazione si saltano',
+      notFrom: {
+        secret: 'PRODUCTION_DATABASE_URL',
+        reason: 'la CI migrerebbe la produzione con le migrazioni delle PR',
+      },
+    },
   ],
 }
 
 const DEPLOY_INPUTS: ActionInputs = {
   workflow: '.github/workflows/deploy.yml',
   action: 'deploy',
-  inputs: [{ name: 'migrate', reason: 'la produzione parte con lo schema di prima' }],
+  inputs: [
+    { name: 'migrate', reason: 'la produzione parte con lo schema di prima' },
+    {
+      name: 'database-url',
+      reason: "le migrazioni del deploy non hanno l'indirizzo di produzione",
+      notFrom: {
+        secret: 'TEST_DATABASE_URL',
+        reason: 'le migrazioni girerebbero sul branch di test, e la produzione partirebbe con lo schema di prima',
+      },
+    },
+  ],
 }
 
 function databaseGaps(files: ProjectFiles, { scripts = {} }: Manifest): ContractGap[] {

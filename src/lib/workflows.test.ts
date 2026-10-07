@@ -129,3 +129,24 @@ describe('actionInputGaps', () => {
     ])
   })
 })
+
+describe('actionInputGaps e il segreto che un input non deve ricevere', () => {
+  it('lo nomina quando il valore lo cita, ma non per un nome che lo contiene', () => {
+    const inputs = {
+      ...CI_INPUTS,
+      inputs: [
+        {
+          name: 'database-url',
+          reason: 'senza database',
+          notFrom: { secret: 'PRODUCTION_URL', reason: 'è la produzione' },
+        },
+      ],
+    }
+    const from = (name: string) => ci(officinaStep(`        with:\n          database-url: \${{ secrets.${name} }}\n`))
+
+    expect(messages(actionInputGaps(from('PRODUCTION_URL'), inputs))).toEqual([
+      '`Elia97/officina/actions/ci` riceve `database-url` da `PRODUCTION_URL`: è la produzione',
+    ])
+    expect(actionInputGaps(from('OLD_PRODUCTION_URL'), inputs)).toEqual([])
+  })
+})

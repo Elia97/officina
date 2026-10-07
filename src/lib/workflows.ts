@@ -66,7 +66,7 @@ export function workflowGaps({ read }: ProjectFiles, version: string): ContractG
 export interface ActionInputs {
   workflow: string
   action: string
-  inputs: readonly { name: string; reason: string }[]
+  inputs: readonly { name: string; reason: string; notFrom?: { secret: string; reason: string } }[]
 }
 
 function parsed(source: string): { workflow: unknown } | { error: string } {
@@ -87,10 +87,16 @@ function stepsUsing(source: string, action: string): Record<string, unknown>[] |
     .filter((step) => isRecord(step) && String(step.uses).startsWith(`${actionName(action)}@`))
 }
 
+const inputValue = (step: Record<string, unknown>, input: string): unknown =>
+  isRecord(step.with) ? step.with[input] : undefined
+
 const receives = (step: Record<string, unknown>, input: string): boolean => {
-  const value = isRecord(step.with) ? step.with[input] : undefined
+  const value = inputValue(step, input)
   return value !== undefined && value !== null && value !== ''
 }
+
+const receivesFrom = (step: Record<string, unknown>, input: string, secret: string): boolean =>
+  String(inputValue(step, input)).split(/\W/).includes(secret)
 
 /** Un workflow che non usa l'action lo segnala già `workflowGaps`. */
 export function actionInputGaps({ read }: ProjectFiles, { workflow, action, inputs }: ActionInputs): ContractGap[] {
@@ -98,10 +104,12 @@ export function actionInputGaps({ read }: ProjectFiles, { workflow, action, inpu
   if (source === undefined) return []
   const steps = stepsUsing(source, action)
   if (typeof steps === 'string') return [{ path: workflow, message: steps }]
-  return inputs
-    .filter(({ name }) => steps.some((step) => !receives(step, name)))
-    .map(({ name, reason }) => ({
-      path: workflow,
-      message: `\`${actionName(action)}\` non riceve \`${name}\`: ${reason}`,
-    }))
+  const gap = (message: string): ContractGap[] => [{ path: workflow, message: `\`${actionName(action)}\` ${message}` }]
+  return inputs.flatMap(({ name, reason, notFrom }) => {
+    if (steps.some((step) => !receives(step, name))) return gap(`non riceve \`${name}\`: ${reason}`)
+    if (notFrom !== undefined && steps.some((step) => receivesFrom(step, name, notFrom.secret))) {
+      return gap(`riceve \`${name}\` da \`${notFrom.secret}\`: ${notFrom.reason}`)
+    }
+    return []
+  })
 }

@@ -1,75 +1,38 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { fileMigrationEnv, maskedValues, migrationEnv } from './migrate.ts'
+import { maskedValues, migrationEnv } from './migrate.ts'
 
 const TEST_URL = 'postgres://prova@ep-test.neon.tech/neondb'
 const PRODUCTION_URL = 'postgres://produzione@ep-prod.neon.tech/neondb'
 
+const FROM_TEST =
+  "`TEST_DATABASE_URL` è vuota: è l'indirizzo del branch di test, che `actions/ci` riceve con `database-url`"
+const FROM_PRODUCTION =
+  "`PRODUCTION_DATABASE_URL` è vuota: è l'indirizzo di produzione, che `actions/deploy` riceve con `database-url` dal segreto `PRODUCTION_DATABASE_URL` dell'environment `production`, dichiarato dal job di deploy"
+
 describe("l'ambiente dello script delle migrazioni", () => {
-  it("dà l'indirizzo alla chiave di migrazione e toglie TEST_DATABASE_URL, lasciando il resto", () => {
-    const env = { PATH: '/usr/bin', TEST_DATABASE_URL: TEST_URL }
+  it.each([
+    ['test', 'TEST_DATABASE_URL', TEST_URL],
+    ['production', 'PRODUCTION_DATABASE_URL', PRODUCTION_URL],
+  ] as const)(
+    'per %s dà %s alla chiave di migrazione, anche sopra quella del job, e lo toglie',
+    (target, variable, url) => {
+      const env = { PATH: '/usr/bin', DATABASE_URL_UNPOOLED: 'postgres://job@ep-job.neon.tech/neondb', [variable]: url }
 
-    expect(migrationEnv(env, 'DATABASE_URL_UNPOOLED')).toEqual({
-      env: { PATH: '/usr/bin', DATABASE_URL_UNPOOLED: TEST_URL },
-      url: TEST_URL,
-    })
-  })
+      expect(migrationEnv(env, 'DATABASE_URL_UNPOOLED', target)).toEqual({
+        env: { PATH: '/usr/bin', DATABASE_URL_UNPOOLED: url },
+        url,
+      })
+    },
+  )
 
   it.each([
-    ['assente', {}],
-    ['vuota', { TEST_DATABASE_URL: '' }],
-  ])("con TEST_DATABASE_URL %s non c'è un database da migrare", (_, env) => {
-    expect(migrationEnv(env, 'DATABASE_URL_UNPOOLED')).toEqual({
-      error:
-        "`TEST_DATABASE_URL` è vuota: è l'indirizzo del branch di test, che `actions/ci` riceve con `database-url`",
-    })
-  })
-})
-
-const PULLED = readFileSync(new URL('./test-helpers/vercel-pull-59.22.0.env', import.meta.url), 'utf8')
-
-const EMPTY =
-  "è vuota fra le variabili di Production su Vercel: va riempita con l'indirizzo del database per le migrazioni"
-
-describe("l'indirizzo dal file di vercel pull", () => {
-  it("lo dà alla chiave di migrazione anche sopra quello del job, e nessun'altra variabile del file entra nell'ambiente", () => {
-    const content = `${PULLED}DATABASE_URL_UNPOOLED="${PRODUCTION_URL}"\n`
-    const job = { PATH: '/usr/bin', DATABASE_URL_UNPOOLED: 'postgres://job@ep-job.neon.tech/neondb' }
-
-    expect(fileMigrationEnv(job, content, 'DATABASE_URL_UNPOOLED')).toEqual({
-      env: { PATH: '/usr/bin', DATABASE_URL_UNPOOLED: PRODUCTION_URL },
-      url: PRODUCTION_URL,
-    })
-  })
-
-  it.each([
-    ['gli spazi ai bordi', `"  ${PRODUCTION_URL} "`],
-    ['un a capo in coda', `"${PRODUCTION_URL}\\n"`],
-  ])('lo dà senza %s, come lo legge vercel build', (_, value) => {
-    expect(fileMigrationEnv({}, `${PULLED}DATABASE_URL_UNPOOLED=${value}\n`, 'DATABASE_URL_UNPOOLED')).toEqual({
-      env: { DATABASE_URL_UNPOOLED: PRODUCTION_URL },
-      url: PRODUCTION_URL,
-    })
-  })
-
-  it.each([
-    [
-      'assente',
-      '',
-      "non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel come Config, collegata a Production: senza `--type config` la CLI la crea Secret",
-    ],
-    ['vuota', 'DATABASE_URL_UNPOOLED=""\n', EMPTY],
-    ['di soli spazi', 'DATABASE_URL_UNPOOLED="   "\n', EMPTY],
-    [
-      'Secret',
-      'DATABASE_URL_UNPOOLED="[SENSITIVE]"\n',
-      'è Secret su Vercel, e vercel pull non ne scarica il valore: va tolta e riaggiunta come Config, collegata a Production',
-    ],
-  ])('con la chiave %s non dà un indirizzo, e dice cosa fare su Vercel', (_, line, message) => {
-    expect(fileMigrationEnv({}, `${PULLED}${line}`, 'DATABASE_URL_UNPOOLED')).toEqual({
-      error: `\`DATABASE_URL_UNPOOLED\` ${message}`,
-    })
+    ['test', 'assente', { PRODUCTION_DATABASE_URL: PRODUCTION_URL }, FROM_TEST],
+    ['test', 'vuota', { TEST_DATABASE_URL: '' }, FROM_TEST],
+    ['production', 'assente', { TEST_DATABASE_URL: TEST_URL }, FROM_PRODUCTION],
+    ['production', 'vuota', { PRODUCTION_DATABASE_URL: '' }, FROM_PRODUCTION],
+  ] as const)("per %s, con la sua variabile %s, non c'è un database da migrare", (target, _, env, error) => {
+    expect(migrationEnv(env, 'DATABASE_URL_UNPOOLED', target)).toEqual({ error })
   })
 })
 

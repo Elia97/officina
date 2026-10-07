@@ -146,7 +146,7 @@ describe('una variabile Secret nel file di vercel pull', () => {
 })
 
 describe('un progetto con database e autenticazione', () => {
-  it('con --env pretende le chiavi del database, delle migrazioni e dell’autenticazione', async () => {
+  it('con --env pretende le chiavi del database e dell’autenticazione, non quella delle migrazioni', async () => {
     const root = project({
       'officina.config.mjs': config('{ placeholders: { contactEnvKeys: [] } }'),
       'package.json': JSON.stringify({ dependencies: { 'drizzle-orm': '^0.45.2', 'better-auth': '^1.7.3' } }),
@@ -157,7 +157,7 @@ describe('un progetto con database e autenticazione', () => {
     const output = lines.join('\n')
 
     expect(exitCode).toBe(1)
-    expect(output).toContain("DATABASE_URL_UNPOOLED non c'è fra le variabili di produzione su Vercel")
+    expect(output).not.toContain('DATABASE_URL_UNPOOLED')
     expect(output).toContain("BETTER_AUTH_SECRET non c'è fra le variabili di produzione su Vercel")
     expect(output).not.toContain("DATABASE_URL non c'è")
     expect(output).toContain('più le chiavi che pretendono `features.database` e `features.auth`.')
