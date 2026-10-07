@@ -10,6 +10,7 @@ import {
   aFunction,
   aNumber,
   anArrayOf,
+  anEnvName,
   aRecordOf,
   aShape,
   aString,
@@ -123,7 +124,7 @@ const SHAPE = aShape({
     auth: feature,
   }),
   placeholders: aShape({ sources: anArrayOf(aString), contactEnvKeys: anArrayOf(aString) }),
-  database: aShape({ migrationUrlKey: aString }),
+  database: aShape({ migrationUrlKey: anEnvName }),
   routes: aShape({ representatives: aRecordOf(aString), disabled: anArrayOf(aString) }),
 })
 

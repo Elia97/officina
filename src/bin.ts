@@ -26,6 +26,7 @@ const USAGE = `Uso:
   officina gen [generatore]         section, page, component, collection, più quelli del progetto
   officina gen icons                le icone del manifest da public/favicon.svg
   officina doctor                   cosa manca al progetto perché i generatori funzionino
+  officina migrate --script <nome>  le migrazioni del branch di test, sotto database.migrationUrlKey
 
 Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
 bundle, links e secrets leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
@@ -40,6 +41,7 @@ const GROUPS: Record<string, (args: string[]) => { load: Loader | undefined; arg
       ? { load: () => import('./gen/icons.ts'), args: args.slice(1) }
       : { load: () => import('./gen/run.ts'), args },
   doctor: (args) => ({ load: () => import('./checks/doctor.ts'), args }),
+  migrate: (args) => ({ load: () => import('./checks/migrate.ts'), args }),
 }
 
 export async function run(argv: string[]): Promise<number> {

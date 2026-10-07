@@ -47,6 +47,13 @@ describe('officina', () => {
     expect(await run(['gen', 'icons'])).toBe(40)
   })
 
+  it('migrate senza --script dice cosa manca ed esce 1', async () => {
+    const lines = silence()
+
+    expect(await run(['migrate'])).toBe(1)
+    expect(lines.join('\n')).toContain('manca `--script`')
+  })
+
   it('doctor esce 1 sul progetto di prova, che non ha tutti i punti di aggancio', async () => {
     const lines = silence()
 
