@@ -68,6 +68,8 @@ Lo smoke legge gli header di sicurezza sulla pagina a cui arriva la radice. Se `
 
 Lo smoke visita anche le pagine rese a richiesta, quelle di `src/pages` con `export const prerender = false`. Ognuna risponde 200, oppure con un redirect sulla stessa origine, come una pagina protetta che rimanda all'accesso; un 200 è HTML e porta il meta `Content-Security-Policy` con la direttiva `script-src`, quello che il middleware dei template scrive nelle pagine rese a richiesta. Una pagina dinamica si visita col suo rappresentante di `routes.representatives`, altrimenti si salta dicendolo. Queste pagine non entrano nel controllo della barra finale né in Lighthouse. Nella 0.12.0 un'anomalia è un avviso, che lo smoke stampa con `·` senza fallire; dalla 0.13.0 sarà un fallimento. officina riconosce una pagina resa a richiesta dalla dichiarazione: con `output: 'server'`, una pagina senza `prerender = false` resta per tutti i gate una pagina prerenderizzata, e lo smoke la visita come le altre, senza cercarne la CSP.
 
+Quando fallisce, lo smoke dice che la produzione è online e rotta, e consiglia di tornare indietro dalla dashboard di Vercel promuovendo l'ultimo deployment di produzione sano. Con `features.database` accesa aggiunge che lo schema non torna indietro: le migrazioni già applicate restano, e il deployment promosso regge solo se sono compatibili con il suo codice, la regola di «Migrazioni compatibili con la produzione» in § Action per i workflow.
+
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
 ```ts

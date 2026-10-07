@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // L'unico controllo che vede cosa serve davvero il bordo: i test del progetto fissano solo vercel.json.
 
+import { existsSync, readFileSync } from 'node:fs'
 import process from 'node:process'
 
+import { readManifest } from '../lib/alignment.ts'
 import { missingInput } from '../lib/cli.ts'
-import { isRequired, loadConfig } from '../lib/config.ts'
+import { isOn, isRequired, loadConfig } from '../lib/config.ts'
 import { type Expectations, expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
 import { onDemandPages } from '../lib/smoke-on-demand.ts'
 import {
@@ -16,6 +18,8 @@ import {
 } from '../lib/smoke-production.ts'
 
 const PAGES_DIR = 'src/pages'
+
+const projectFile = (path: string): string | undefined => (existsSync(path) ? readFileSync(path, 'utf8') : undefined)
 
 function printResults(results: readonly CheckResult[]): void {
   for (const { check, status, detail } of results) {
@@ -29,11 +33,15 @@ function printResults(results: readonly CheckResult[]): void {
 const disabledResults = ({ disabled }: Expectations): CheckResult[] =>
   disabled.map(({ label }) => ({ check: `pagina ${label}`, status: 'skip', detail: 'spenta da `routes.disabled`' }))
 
-function printFailures(failures: readonly CheckResult[]): void {
+function printFailures(failures: readonly CheckResult[], database: boolean): void {
   console.error(`\n✗ ${failures.length} controllo/i falliti:`)
   console.error(`${failures.map(({ check, detail }) => `  - ${check} — ${detail}`).join('\n')}\n`)
   console.error('La produzione è online e rotta. Torna indietro dalla dashboard di Vercel:')
   console.error('Deployments → l’ultimo deployment di produzione sano → Promote to Production.\n')
+  if (!database) return
+  console.error('Con un database lo schema non torna indietro: le migrazioni già applicate restano,')
+  console.error('e il deployment che promuovi regge solo se sono compatibili con il suo codice.')
+  console.error('La regola è nel README di officina: «Migrazioni compatibili con la produzione».\n')
 }
 
 export async function main(args: string[] = []): Promise<number> {
@@ -75,7 +83,7 @@ export async function main(args: string[] = []): Promise<number> {
 
   const failures = results.filter(({ status }) => status === 'fail')
   if (failures.length > 0) {
-    printFailures(failures)
+    printFailures(failures, isOn(config, readManifest({ read: projectFile }), 'database'))
     return 1
   }
   const warnings = results.filter(({ status }) => status === 'warn').length
