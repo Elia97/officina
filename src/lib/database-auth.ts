@@ -5,7 +5,7 @@ import { type EnvField, envSchema } from './env-schema.ts'
 import { type ActionInputs, actionInputGaps } from './workflows.ts'
 
 const MANIFEST = 'package.json'
-const DRIZZLE_CONFIG = 'drizzle.config.ts'
+export const DRIZZLE_CONFIG = 'drizzle.config.ts'
 const ASTRO_CONFIG = 'astro.config.mjs'
 
 const SCRIPTS: readonly { name: string; reason: string }[] = [

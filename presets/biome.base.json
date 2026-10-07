@@ -11,7 +11,8 @@
       "!!**/public",
       "!!.claude/worktrees",
       "!!src/assets/**/*.svg",
-      "!!.release-please-manifest.json"
+      "!!.release-please-manifest.json",
+      "!!drizzle"
     ]
   },
   "formatter": {
