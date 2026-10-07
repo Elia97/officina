@@ -26,7 +26,7 @@ const USAGE = `Uso:
   officina gen [generatore]         section, page, component, collection, più quelli del progetto
   officina gen icons                le icone del manifest da public/favicon.svg
   officina doctor                   cosa manca al progetto perché i generatori funzionino
-  officina migrate --script <nome>  le migrazioni del branch di test, sotto database.migrationUrlKey
+  officina migrate --script <nome>  le migrazioni sotto database.migrationUrlKey: del branch di test, o con --env <file> dal file di vercel pull
 
 Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
 bundle, links e secrets leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]

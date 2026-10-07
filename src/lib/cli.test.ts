@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { cliOptions, exitCode, isGenerated, missingInput, printFindings, readLines } from './cli.ts'
+import { cliOptions, exitCode, isGenerated, maskCommand, missingInput, printFindings, readLines } from './cli.ts'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -119,6 +119,12 @@ describe('printFindings', () => {
   it('codifica i caratteri che romperebbero il comando di annotazione', () => {
     const [line] = printedLines(() => printFindings([{ ...finding, message: 'first\nsecond 50% more' }], 'github'))
     expect(line).toContain('first%0Asecond 50%25 more')
+  })
+})
+
+describe('maskCommand', () => {
+  it('codifica %, CR e LF, che il runner decodifica prima di registrare la maschera', () => {
+    expect(maskCommand('postgres://u:p%25w@h/db\r\n')).toBe('::add-mask::postgres://u:p%2525w@h/db%0D%0A')
   })
 })
 

@@ -18,6 +18,10 @@ inputs:
   vercel-project-id:
     description: 'ID del progetto Vercel: il progetto passa il proprio segreto VERCEL_PROJECT_ID'
     required: true
+  migrate:
+    description: 'Lo script delle migrazioni, per esempio `db:migrate`: le applica alla produzione dopo `vercel pull` e prima di `vercel build`'
+    required: false
+    default: ''
 
 outputs:
   url:
@@ -108,6 +112,13 @@ runs:
 
     - run: pnpm run check:placeholders --env .vercel/.env.production.local
       shell: bash
+
+    - name: Migrazioni della produzione
+      if: ${{ inputs.migrate != '' }}
+      shell: bash
+      env:
+        MIGRATE: ${{ inputs.migrate }}
+      run: pnpm exec officina migrate --env .vercel/.env.production.local --script "$MIGRATE"
 
     - run: pnpm dlx vercel@62.2.0 build --prod
       shell: bash
