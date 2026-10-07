@@ -6,7 +6,12 @@ import { parseArgs } from 'node:util'
 
 import { maskCommand, missingInput } from '../lib/cli.ts'
 import { loadConfig, migrationUrlKey } from '../lib/config.ts'
-import { fileMigrationEnv, type MigrationEnv, migrationEnv } from '../lib/migrate.ts'
+import { fileMigrationEnv, type MigrationEnv, maskedValues, migrationEnv } from '../lib/migrate.ts'
+
+const written = (stream: NodeJS.WritableStream, text: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    stream.write(text, (error) => (error ? reject(error) : resolve()))
+  })
 
 const migrationFrom = (file: string | undefined, key: string): MigrationEnv =>
   file === undefined ? migrationEnv(process.env, key) : fileMigrationEnv(process.env, readFileSync(file, 'utf8'), key)
@@ -28,7 +33,12 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<numb
     console.error(`\n✗ ${migration.error}.\n`)
     return 1
   }
-  if (process.env.GITHUB_ACTIONS) console.log(maskCommand(migration.url))
+  if (process.env.GITHUB_ACTIONS) {
+    // Su una pipe piena libuv scrive il resto solo dopo `spawnSync`; il runner legge stderr prima di stdout
+    // in ogni lotto di righe.
+    const masks = `${maskedValues(migration.url).map(maskCommand).join('\n')}\n`
+    await Promise.all([written(process.stdout, masks), written(process.stderr, masks)])
+  }
   console.log(`\nmigrate — \`pnpm run ${script}\` ${where(file)} in \`${key}\`\n`)
   const { status, signal, error } = spawnSync('pnpm', ['run', script], { stdio: 'inherit', env: migration.env })
   if (error !== undefined) {

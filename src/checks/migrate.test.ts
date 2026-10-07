@@ -105,14 +105,22 @@ describe('officina migrate --env', () => {
     expect(stderr).toBe('')
   })
 
-  it("su GitHub Actions maschera l'indirizzo prima di tutto il resto, dal file come dal branch di test", () => {
-    const root = pulled(`DATABASE_URL_UNPOOLED="${PRODUCTION_URL}"\n`)
+  it('su GitHub Actions maschera indirizzo e password su stdout e su stderr, prima di ogni riga dello script', () => {
+    const masks = [
+      '::add-mask::postgres://produzione:p%2525ss@ep-prod.neon.tech/neondb',
+      '::add-mask::p%2525ss',
+      '::add-mask::p%25ss',
+    ].join('\n')
+    const root = pulled('DATABASE_URL_UNPOOLED="postgres://produzione:p%25ss@ep-prod.neon.tech/neondb"\n')
+    const scriptLine = { FAKE_PNPM_STDERR: 'una riga dello script' }
 
-    const fromFile = migrate(root, { GITHUB_ACTIONS: 'true' }, ['--env', PULLED])
+    const fromFile = migrate(root, { GITHUB_ACTIONS: 'true', ...scriptLine }, ['--env', PULLED])
     const fromTest = migrate(root, { GITHUB_ACTIONS: 'true', TEST_DATABASE_URL: TEST_URL })
 
-    expect(fromFile.stdout.split('\n')[0]).toBe(`::add-mask::${PRODUCTION_URL}`)
+    expect(fromFile.stdout.slice(0, masks.length + 1)).toBe(`${masks}\n`)
+    expect(fromFile.stderr).toBe(`${masks}\nuna riga dello script\n`)
     expect(fromTest.stdout.split('\n')[0]).toBe(`::add-mask::${TEST_URL}`)
+    expect(fromTest.stderr).toBe(`::add-mask::${TEST_URL}\n`)
   })
 
   it('senza il file, o con la chiave Sensitive, non lancia lo script ed esce 1', () => {
