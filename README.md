@@ -49,7 +49,7 @@ I gate leggono dalla cartella corrente, che deve essere la radice del repository
 | `check bundle` | il JavaScript e il CSS di `dist/client`, gzip, contro un budget per rotta | `src/pages`; sotto SSR, il manifest della build Vercel |
 | `check links` | gli `<a href>` di `dist/client`: ogni link interno porta a qualcosa che la build serve, e nessuno a `#` | i file di `dist/client` e le rotte a richiesta del manifest della build Vercel |
 | `check secrets [--canaries]` | i file di `dist/client`: nessuno contiene il valore o il canary di una chiave server e secret di `env.schema` | — |
-| `check smoke [url]` | la produzione viva: pagine, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
+| `check smoke [url]` | la produzione viva: pagine, pagine rese a richiesta, header di sicurezza, BotID, host canonico, barra finale | `src/pages`, più le rotte non HTML |
 | `check analytics [GTM-…]` | il container GTM pubblico contro gli eventi del modulo di link-tracking del progetto (`analytics.linkTracking`) | — |
 | `check lighthouse [url] [--local]` | Lighthouse CI sul `.lighthouserc.json` del progetto; con `url` misura un sito già servito, `--local` fa build, server statico e Chrome da sé | `src/pages` |
 | `gen icons` | le icone del manifest, disegnate da `public/favicon.svg`, che è il suo ingresso obbligatorio | — |
@@ -65,6 +65,8 @@ Il CSS di una rotta è la somma dei fogli di `dist/client/_astro` che collega, o
 Per Lighthouse un sito SSR si misura con `check lighthouse <url>`, sulla produzione o su un'anteprima: al posto del server del progetto visita quell'indirizzo, ed è l'unico modo di avere numeri di produzione. `--local` serve i file statici della build, quindi su un sito renderizzato a richiesta si ferma e lo dice, invece di misurare dei 404. Un'anteprima Vercel con la Deployment Protection risponde con la pagina di accesso, e il check non la può misurare: serve la produzione o un'anteprima non protetta. La porta del server locale segue `LH_PORT` sia con `--listen` sia con `--port`.
 
 Lo smoke legge gli header di sicurezza sulla pagina a cui arriva la radice. Se `/` è un redirect sulla stessa origine — il 302 di lingua che Astro emette con `i18n.routing.redirectToDefaultLocale`, per esempio — li cerca sulla destinazione, perché il redirect non porta la CSP delle pagine renderizzate, e il nome del controllo dice dove li ha letti: `header content-security-policy su /it`. Un redirect verso un'altra origine, o senza `location`, è un fallimento. Anche l'attesa che l'alias di produzione punti al deployment nuovo conta un 3xx come una risposta.
+
+Lo smoke visita anche le pagine rese a richiesta, quelle di `src/pages` con `export const prerender = false`. Ognuna risponde 200, oppure con un redirect sulla stessa origine, come una pagina protetta che rimanda all'accesso; un 200 è HTML e porta il meta `Content-Security-Policy` con la direttiva `script-src`, quello che il middleware dei template scrive nelle pagine rese a richiesta. Una pagina dinamica si visita col suo rappresentante di `routes.representatives`, altrimenti si salta dicendolo. Queste pagine non entrano nel controllo della barra finale né in Lighthouse. Nella 0.12.0 un'anomalia è un avviso, che lo smoke stampa con `·` senza fallire; dalla 0.13.0 sarà un fallimento. officina riconosce una pagina resa a richiesta dalla dichiarazione: con `output: 'server'`, una pagina senza `prerender = false` resta per tutti i gate una pagina prerenderizzata, e lo smoke la visita come le altre, senza cercarne la CSP.
 
 Il motore è uguale per tutti; ciò che cambia da un progetto all'altro sta in un file solo, `officina.config.ts` nella radice:
 
@@ -91,7 +93,7 @@ La radice del pacchetto esporta `defineConfig` e i tipi; i pezzi del motore stan
 
 | Sottopercorso | Cosa esporta |
 |---|---|
-| `@elia97/officina/smoke` | `DEFAULT_CHECKS`, i cinque controlli, `SECURITY_HEADERS`, `NON_HTML_ROUTES` |
+| `@elia97/officina/smoke` | `DEFAULT_CHECKS`, i sei controlli, `SECURITY_HEADERS`, `NON_HTML_ROUTES` |
 | `@elia97/officina/bundle` | `CSS_BUDGET_GZIP` |
 | `@elia97/officina/icons` | `ICON_SPECS` |
 

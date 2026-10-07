@@ -6,6 +6,7 @@ import process from 'node:process'
 import { missingInput } from '../lib/cli.ts'
 import { isRequired, loadConfig } from '../lib/config.ts'
 import { type Expectations, expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
+import { onDemandPages } from '../lib/smoke-on-demand.ts'
 import {
   type CheckResult,
   runChecks,
@@ -20,6 +21,7 @@ function printResults(results: readonly CheckResult[]): void {
   for (const { check, status, detail } of results) {
     if (status === 'pass') console.log(`✓ ${check}`)
     else if (status === 'skip') console.log(`- ${check} (saltato: ${detail})`)
+    else if (status === 'warn') console.log(`· ${check} — ${detail}`)
     else console.error(`✗ ${check} — ${detail}`)
   }
 }
@@ -67,7 +69,8 @@ export async function main(args: string[] = []): Promise<number> {
   console.log(`\nSmoke di produzione — ${baseUrl}\n`)
 
   await waitForAlias(context, (ms) => new Promise((resolve) => setTimeout(resolve, ms)))
-  const results = await runChecks(context, pages, smoke.checks)
+  const onDemand = onDemandPages(expected, PAGES_DIR, routes.representatives)
+  const results = await runChecks({ ...context, onDemand }, pages, smoke.checks)
   printResults([...results, ...disabledResults(expected)])
 
   const failures = results.filter(({ status }) => status === 'fail')
@@ -75,6 +78,9 @@ export async function main(args: string[] = []): Promise<number> {
     printFailures(failures)
     return 1
   }
+  const warnings = results.filter(({ status }) => status === 'warn').length
+  // TODO: dalla 0.13.0 le anomalie a richiesta sono `fail` (smoke-on-demand.ts): togli il log degli avvisi qui sotto.
+  if (warnings > 0) console.log(`\n· ${warnings} avviso/i: dalla 0.13.0 fanno fallire lo smoke.`)
   console.log(`\n✓ Tutti i controlli passati su ${baseUrl}.\n`)
   return 0
 }

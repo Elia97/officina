@@ -6,12 +6,14 @@ export interface ResponseInit {
   ok?: boolean
   status?: number
   headers?: Record<string, string>
+  body?: string
 }
 
-export const response = ({ ok = true, status = 200, headers = {} }: ResponseInit): SmokeResponse => ({
+export const response = ({ ok = true, status = 200, headers = {}, body = '' }: ResponseInit): SmokeResponse => ({
   ok,
   status,
   headers: { get: (name) => headers[name] ?? null },
+  text: () => Promise.resolve(body),
 })
 
 export const always =
