@@ -22,7 +22,7 @@ const COMPLETE: Record<string, string> = {
   '.github/workflows/ci.yml': workflow(
     'ci',
     'ci',
-    '        with:\n          migrate: db:migrate\n          database-url: postgres://branch-di-test\n',
+    `        with:\n          migrate: db:migrate\n          database-url: \${{ steps.branch.outputs.db_url }}\n`,
   ),
   '.github/workflows/deploy.yml': workflow(
     'deploy',
@@ -105,6 +105,22 @@ describe('databaseAuthGaps con il database', () => {
     expect(messages(databaseAuthGaps(files, SCRIPTS, ['database']))).toEqual([
       '`Elia97/officina/actions/ci` riceve `database-url` da `PRODUCTION_DATABASE_URL`: la CI migrerebbe la produzione con le migrazioni delle PR',
       '`Elia97/officina/actions/deploy` riceve `database-url` da `TEST_DATABASE_URL`: le migrazioni girerebbero sul branch di test, e la produzione partirebbe con lo schema di prima',
+    ])
+  })
+})
+
+describe('databaseAuthGaps e il database della CI', () => {
+  it('avvisa quando la CI riceve un branch di test condiviso, invece di quello della corsa', () => {
+    const files = project({
+      '.github/workflows/ci.yml': workflow(
+        'ci',
+        'ci',
+        `        with:\n          migrate: db:migrate\n          database-url: \${{ secrets.TEST_DATABASE_URL }}\n`,
+      ),
+    })
+
+    expect(messages(databaseAuthGaps(files, SCRIPTS, ['database']))).toEqual([
+      '`Elia97/officina/actions/ci` riceve `database-url` da `TEST_DATABASE_URL`: le corse parallele migrerebbero lo stesso branch, invece di un branch Neon per corsa',
     ])
   })
 })

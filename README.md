@@ -142,7 +142,7 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 
 | Action | Passi | Cosa resta nel workflow del progetto |
 |---|---|---|
-| `actions/ci` | checkout, node, install, `astro sync`, con `migrate` le migrazioni del branch di test, `pnpm run ci`, i canary di `check secrets`, build, `perf:bundle`, `check:links`, `check:secrets`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci`; con un database, lo script delle migrazioni e il segreto `TEST_DATABASE_URL` passati in `with:` |
+| `actions/ci` | checkout, node, install, `astro sync`, con `migrate` le migrazioni del database della corsa, `pnpm run ci`, i canary di `check secrets`, build, `perf:bundle`, `check:links`, `check:secrets`; con `e2e: 'true'` anche Playwright | trigger, permessi, il job `ci`; con un database, il branch Neon della corsa, creato e cancellato intorno all'action, e lo script delle migrazioni e il suo indirizzo passati in `with:` |
 | `actions/review` | `astro sync`, poi `fallow review` sul diff contro il merge-base | il job informativo |
 | `actions/deploy` | risoluzione del tag, stessa versione di officina, gate, `vercel pull`, con `migrate` le migrazioni, `build`, controllo della build, `deploy`, smoke; espone `url` | trigger, `environment`, i tre segreti Vercel passati in `with:`, il job che controlla se i segreti ci sono; con un database, lo script delle migrazioni e il segreto `PRODUCTION_DATABASE_URL` passati in `with:` |
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
@@ -175,16 +175,41 @@ I tre segreti sono input obbligatori e l'action li mette nell'`env` dei soli tre
 
 **Il deploy lanciato a mano.** Con `workflow_dispatch` il workflow viene dal ramo scelto in «Use workflow from», e il pacchetto dal lockfile del tag che si deploya: le due metà possono avere due versioni di officina diverse, e un passo dell'action più nuova può chiamare un'opzione che gli script del tag non conoscono. `actions/deploy` confronta le due versioni subito dopo l'install, prima di ogni script del progetto e di `vercel pull`, e si ferma dicendole se non coincidono o se il tag non installa officina. Un tag più vecchio si deploya lanciando Deploy da quel tag: il suo `deploy.yml` dichiara l'action della sua versione, con i gate di allora. Perché si possa, l'environment `production` del progetto deve ammettere i tag fra i ref da cui si deploya.
 
-**Il database di test.** Un progetto con un database passa a `actions/ci` lo script delle migrazioni e il segreto del branch di test:
+**Il database di test.** Ogni corsa della CI migra un database suo: un branch Neon che il `ci.yml` del progetto crea prima di `actions/ci`, figlio di un branch vuoto, e cancella alla fine. Così due corse in parallelo, come la CI di una PR e quella di `main`, non vedono l'una le migrazioni dell'altra. Il genitore resta vuoto perché il migratore di drizzle-orm 0.45 applica una migrazione solo se è più recente dell'ultima applicata: ogni corsa le applica tutte, da zero, e nessuna si salta.
 
 ```yaml
+      - name: Branch Neon della corsa
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          [ -n "$NEON_API_KEY" ] || exit 0
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "expires=$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - uses: neondatabase/create-branch-action@v6
+        id: branch
+        if: steps.neon.outputs.enabled == 'true'
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          parent_branch: test
+          branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          expires_at: ${{ steps.neon.outputs.expires }}
       - uses: Elia97/officina/actions/ci@vX.Y.Z
         with:
           migrate: db:migrate
-          database-url: ${{ secrets.TEST_DATABASE_URL }}
+          database-url: ${{ steps.branch.outputs.db_url }}
+      - uses: neondatabase/delete-branch-action@v3
+        if: always() && steps.branch.outputs.branch_id != ''
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ steps.branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
 ```
 
-Prima di `pnpm run ci` l'action lancia `officina migrate --script <migrate>`, che legge `database.migrationUrlKey` da `officina.config.ts` e dà l'indirizzo allo script sotto quella chiave, e solo sotto quella. `pnpm run ci` lo riceve come `TEST_DATABASE_URL`, per i test di integrazione. La build e `check:secrets` lo ricevono come `DATABASE_URL`, al posto del canary: una pagina prerenderizzata dal database lo legge davvero, e `check secrets` cerca il valore che la build ha ricevuto. Gli altri passi non lo vedono, e senza `database-url` i comandi ricevono l'ambiente del job com'è. Con `migrate` e il segreto vuoto, come sulle PR di Dependabot e su quelle da un fork, l'action non migra, lo dice con un `::notice::` e prosegue: i test di integrazione si saltano da soli, e la build riceve il canary. Le PR di Dependabot ricevono solo i segreti di Dependabot: per avere l'integrazione anche lì, `TEST_DATABASE_URL` va anche fra quelli, e allora l'indirizzo arriva al codice di ogni aggiornamento, quindi il branch di test non deve contenere dati veri. Senza il segreto, una pagina prerenderizzata dal database non ha un database da leggere, e la build si ferma.
+Il genitore, `test` nell'esempio, è il branch di test di prima. Si svuota una volta con `DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP SCHEMA IF EXISTS drizzle CASCADE;`, e da lì nessuno lo migra. Il primo passo legge la chiave dal proprio `env`, non da quello del job, dove la vedrebbero anche le dipendenze. `expires_at` cancella il branch anche quando il passo finale non arriva. La chiave dell'API di Neon crea e cancella i branch del progetto, quindi va limitata al progetto dove Neon lo permette, e non va data a Dependabot, che la passerebbe al codice di ogni aggiornamento. `doctor` avvisa quando `ci.yml` passa ancora un branch condiviso, `TEST_DATABASE_URL`.
+
+Prima di `pnpm run ci` l'action lancia `officina migrate --script <migrate>`, che legge `database.migrationUrlKey` da `officina.config.ts` e dà l'indirizzo allo script sotto quella chiave, e solo sotto quella. `pnpm run ci` lo riceve come `TEST_DATABASE_URL`, per i test di integrazione. La build e `check:secrets` lo ricevono come `DATABASE_URL`, al posto del canary: una pagina prerenderizzata dal database lo legge davvero, e `check secrets` cerca il valore che la build ha ricevuto. Gli altri passi non lo vedono, e senza `database-url` i comandi ricevono l'ambiente del job com'è. Le PR di Dependabot e quelle da un fork non ricevono `NEON_API_KEY`: il branch non nasce, `database-url` arriva vuoto, e con `migrate` l'action non migra, lo dice con un `::notice::` e prosegue. I test di integrazione si saltano da soli, e la build riceve il canary, quindi una pagina prerenderizzata dal database non ha un database da leggere, e la build si ferma.
 
 **Le migrazioni al deploy.** Con un database, anche `actions/deploy` riceve lo script delle migrazioni, con l'indirizzo di produzione:
 

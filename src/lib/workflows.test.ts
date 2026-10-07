@@ -130,15 +130,18 @@ describe('actionInputGaps', () => {
   })
 })
 
-describe('actionInputGaps e il segreto che un input non deve ricevere', () => {
-  it('lo nomina quando il valore lo cita, ma non per un nome che lo contiene', () => {
+describe('actionInputGaps e i segreti che un input non deve ricevere', () => {
+  it('nomina quello che il valore cita, con il suo motivo, ma non un nome che lo contiene', () => {
     const inputs = {
       ...CI_INPUTS,
       inputs: [
         {
           name: 'database-url',
           reason: 'senza database',
-          notFrom: { secret: 'PRODUCTION_URL', reason: 'è la produzione' },
+          notFrom: [
+            { secret: 'PRODUCTION_URL', reason: 'è la produzione' },
+            { secret: 'SHARED_URL', reason: 'è condiviso' },
+          ],
         },
       ],
     }
@@ -146,6 +149,9 @@ describe('actionInputGaps e il segreto che un input non deve ricevere', () => {
 
     expect(messages(actionInputGaps(from('PRODUCTION_URL'), inputs))).toEqual([
       '`Elia97/officina/actions/ci` riceve `database-url` da `PRODUCTION_URL`: è la produzione',
+    ])
+    expect(messages(actionInputGaps(from('SHARED_URL'), inputs))).toEqual([
+      '`Elia97/officina/actions/ci` riceve `database-url` da `SHARED_URL`: è condiviso',
     ])
     expect(actionInputGaps(from('OLD_PRODUCTION_URL'), inputs)).toEqual([])
   })
