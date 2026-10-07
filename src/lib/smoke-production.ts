@@ -1,9 +1,11 @@
 import type { VerifiedRoute } from './routes.ts'
+import { checkOnDemandPages, type OnDemandPage } from './smoke-on-demand.ts'
 
 export interface SmokeResponse {
   ok: boolean
   status: number
   headers: { get: (name: string) => string | null }
+  text?: () => Promise<string>
 }
 
 export type Fetcher = (url: string) => Promise<SmokeResponse>
@@ -14,13 +16,14 @@ export interface SmokeContext {
   siteUrl: string
   securityHeaders: Record<string, string | null>
   botIdRequired: boolean
+  onDemand?: readonly OnDemandPage[]
 }
 
 export type SmokeCheck = (context: SmokeContext, pages: readonly VerifiedRoute[]) => Promise<CheckResult[]>
 
 export interface CheckResult {
   check: string
-  status: 'pass' | 'fail' | 'skip'
+  status: 'pass' | 'fail' | 'skip' | 'warn'
   detail?: string
 }
 
@@ -171,6 +174,7 @@ export async function checkTrailingSlash(
 
 export const DEFAULT_CHECKS: readonly SmokeCheck[] = [
   checkPages,
+  checkOnDemandPages,
   checkSecurityHeaders,
   checkBotIdChallenge,
   checkCanonicalHost,
