@@ -32,6 +32,14 @@ export const aFunction: Check = (value, path) =>
 export const aStringOrNull: Check = (value, path) =>
   typeof value === 'string' || value === null ? [] : [problem(path, 'una stringa oppure null', value)]
 
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+export const anEnvName: Check = (value, path) => {
+  if (typeof value !== 'string') return [problem(path, 'una stringa', value)]
+  if (ENV_NAME.test(value)) return []
+  return [`${path}: atteso il nome di una variabile d'ambiente, ricevuto ${JSON.stringify(value)}`]
+}
+
 export const anArrayOf =
   (item: Check): Check =>
   (value, path) =>

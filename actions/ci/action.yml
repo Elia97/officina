@@ -6,6 +6,14 @@ inputs:
     description: "'true' per lanciare anche `pnpm run test:e2e` con il Chromium di Playwright"
     required: false
     default: 'false'
+  migrate:
+    description: 'Lo script delle migrazioni, per esempio `db:migrate`: le applica al branch di test prima di `pnpm run ci`'
+    required: false
+    default: ''
+  database-url:
+    description: "L'indirizzo del branch di test: il progetto passa il proprio segreto TEST_DATABASE_URL"
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -30,14 +38,43 @@ runs:
         pnpm exec astro sync || echo "::warning::astro sync non è riuscito: si prosegue senza i tipi generati"
       shell: bash
 
-    - run: pnpm run ci
+    # Una PR di Dependabot riceve solo i segreti di Dependabot, una da un fork nessuno: lì l'indirizzo è vuoto.
+    - name: Migrazioni del branch di test
+      if: ${{ inputs.migrate != '' }}
       shell: bash
+      env:
+        MIGRATE: ${{ inputs.migrate }}
+        TEST_DATABASE_URL: ${{ inputs.database-url }}
+      run: |
+        if [ -z "$TEST_DATABASE_URL" ]; then
+          echo "::notice::database-url è vuoto, come sulle PR di Dependabot o da un fork: il branch di test non si migra, e i test di integrazione si saltano"
+          exit 0
+        fi
+        pnpm exec officina migrate --script "$MIGRATE"
+
+    # L'`env:` di un passo vince su quello del job anche quando vale ''; il log intitola il passo con la prima riga di `run`.
+    - name: pnpm run ci
+      shell: bash
+      env:
+        OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
+      run: |
+        # pnpm run ci
+        [ -z "$OFFICINA_TEST_DATABASE_URL" ] || export TEST_DATABASE_URL="$OFFICINA_TEST_DATABASE_URL"
+        unset OFFICINA_TEST_DATABASE_URL
+        pnpm run ci
 
     - run: pnpm exec officina check secrets --canaries >> "$GITHUB_ENV"
       shell: bash
 
-    - run: pnpm run build
+    - name: pnpm run build
       shell: bash
+      env:
+        OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
+      run: |
+        # pnpm run build
+        [ -z "$OFFICINA_TEST_DATABASE_URL" ] || export DATABASE_URL="$OFFICINA_TEST_DATABASE_URL"
+        unset OFFICINA_TEST_DATABASE_URL
+        pnpm run build
 
     # Legge dist/client, quindi deve seguire la build.
     - run: pnpm run perf:bundle
@@ -47,8 +84,15 @@ runs:
       shell: bash
 
     # TODO: dalla 0.13.0 `check:secrets` è un errore di doctor: togli --if-present.
-    - run: pnpm run --if-present check:secrets
+    - name: pnpm run check:secrets
       shell: bash
+      env:
+        OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
+      run: |
+        # pnpm run check:secrets
+        [ -z "$OFFICINA_TEST_DATABASE_URL" ] || export DATABASE_URL="$OFFICINA_TEST_DATABASE_URL"
+        unset OFFICINA_TEST_DATABASE_URL
+        pnpm run --if-present check:secrets
 
     - name: Cache del browser di Playwright
       if: ${{ inputs.e2e == 'true' }}

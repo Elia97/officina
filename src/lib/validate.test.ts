@@ -4,6 +4,7 @@ import {
   aFunction,
   aNumber,
   anArrayOf,
+  anEnvName,
   aRecordOf,
   aShape,
   aString,
@@ -42,6 +43,15 @@ describe('i controlli semplici', () => {
     expect(aNumber('1', 'a')).toEqual(['a: atteso un numero, ricevuto una stringa'])
     expect(aFunction(() => 0, 'a')).toEqual([])
     expect(aFunction(0, 'a')).toEqual(['a: atteso una funzione, ricevuto un numero'])
+  })
+
+  it("vogliono il nome di una variabile d'ambiente dove il valore diventa una chiave dell'ambiente", () => {
+    expect(anEnvName('DATABASE_URL_UNPOOLED', 'a')).toEqual([])
+    expect(anEnvName('', 'a')).toEqual([`a: atteso il nome di una variabile d'ambiente, ricevuto ""`])
+    expect(anEnvName('DATABASE-URL', 'a')).toEqual([
+      `a: atteso il nome di una variabile d'ambiente, ricevuto "DATABASE-URL"`,
+    ])
+    expect(anEnvName(1, 'a')).toEqual(['a: atteso una stringa, ricevuto un numero'])
   })
 
   it('lasciano passare null dove il contratto lo prevede', () => {
