@@ -23,7 +23,7 @@ afterEach(() => {
 })
 
 describe('outputFindings', () => {
-  it('nomina ogni file della build in cui è entrato il segnaposto di una Sensitive', () => {
+  it('nomina ogni file della build in cui è entrato il segnaposto di una Secret', () => {
     const root = build({
       'static/_astro/page.js': 'const from="[SENSITIVE]";',
       'functions/_render.func/chunks/actions.mjs': 'export const sender = "[SENSITIVE]"',
@@ -35,7 +35,7 @@ describe('outputFindings', () => {
         path: join(root, 'functions/_render.func/chunks/actions.mjs'),
         severity: 'error',
         message:
-          "contiene [SENSITIVE], il segnaposto che vercel pull scrive per una variabile Sensitive: la build l'ha incorporato al posto del valore",
+          "contiene [SENSITIVE], il segnaposto che vercel pull scrive per una variabile Secret: la build l'ha incorporato al posto del valore",
       },
       expect.objectContaining({ path: join(root, 'static/_astro/page.js') }),
     ])

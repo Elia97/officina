@@ -104,7 +104,7 @@ describe('un sorgente che non esiste', () => {
   })
 })
 
-describe('una variabile Sensitive nel file di vercel pull', () => {
+describe('una variabile Secret nel file di vercel pull', () => {
   it('con --env è un avviso che non ferma il deploy', async () => {
     const root = project({
       'officina.config.mjs': config("{ placeholders: { contactEnvKeys: ['CONTACT_FROM_EMAIL'] } }"),
@@ -114,7 +114,7 @@ describe('una variabile Sensitive nel file di vercel pull', () => {
     const { exitCode, lines } = await run(root, ['--env', '.env.production.local'])
 
     expect(exitCode).toBe(0)
-    expect(lines.join('\n')).toContain('CONTACT_FROM_EMAIL è Sensitive su Vercel')
+    expect(lines.join('\n')).toContain('CONTACT_FROM_EMAIL è Secret su Vercel')
     expect(lines.join('\n')).not.toContain('Da impostare')
   })
 
@@ -125,7 +125,7 @@ describe('una variabile Sensitive nel file di vercel pull', () => {
 
     expect(exitCode).toBe(1)
     expect(lines.join('\n')).toContain('.vercel/output/static/_astro/page.js: contiene [SENSITIVE]')
-    expect(lines.join('\n')).toContain('portala a Encrypted, o leggila a runtime')
+    expect(lines.join('\n')).toContain('va tolta e riaggiunta come Config, o letta a runtime')
   })
 
   it('con --output esce 0 su una build pulita', async () => {
@@ -134,7 +134,7 @@ describe('una variabile Sensitive nel file di vercel pull', () => {
     const { exitCode, lines } = await run(root, ['--output', '.vercel/output'])
 
     expect(exitCode).toBe(0)
-    expect(lines.join('\n')).toContain('Nessuna variabile Sensitive entrata nella build.')
+    expect(lines.join('\n')).toContain('Nessuna variabile Secret entrata nella build.')
   })
 
   it('con --output nomina la cartella della build quando manca', async () => {
