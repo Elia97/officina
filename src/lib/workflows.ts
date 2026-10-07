@@ -66,7 +66,7 @@ export function workflowGaps({ read }: ProjectFiles, version: string): ContractG
 export interface ActionInputs {
   workflow: string
   action: string
-  inputs: readonly { name: string; reason: string; notFrom?: { secret: string; reason: string } }[]
+  inputs: readonly { name: string; reason: string; notFrom?: readonly { secret: string; reason: string }[] }[]
 }
 
 function parsed(source: string): { workflow: unknown } | { error: string } {
@@ -105,11 +105,9 @@ export function actionInputGaps({ read }: ProjectFiles, { workflow, action, inpu
   const steps = stepsUsing(source, action)
   if (typeof steps === 'string') return [{ path: workflow, message: steps }]
   const gap = (message: string): ContractGap[] => [{ path: workflow, message: `\`${actionName(action)}\` ${message}` }]
-  return inputs.flatMap(({ name, reason, notFrom }) => {
+  return inputs.flatMap(({ name, reason, notFrom = [] }) => {
     if (steps.some((step) => !receives(step, name))) return gap(`non riceve \`${name}\`: ${reason}`)
-    if (notFrom !== undefined && steps.some((step) => receivesFrom(step, name, notFrom.secret))) {
-      return gap(`riceve \`${name}\` da \`${notFrom.secret}\`: ${notFrom.reason}`)
-    }
-    return []
+    const wrong = notFrom.find(({ secret }) => steps.some((step) => receivesFrom(step, name, secret)))
+    return wrong === undefined ? [] : gap(`riceve \`${name}\` da \`${wrong.secret}\`: ${wrong.reason}`)
   })
 }

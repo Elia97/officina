@@ -21,10 +21,13 @@ const CI_INPUTS: ActionInputs = {
     {
       name: 'database-url',
       reason: 'i test di integrazione si saltano',
-      notFrom: {
-        secret: 'PRODUCTION_DATABASE_URL',
-        reason: 'la CI migrerebbe la produzione con le migrazioni delle PR',
-      },
+      notFrom: [
+        { secret: 'PRODUCTION_DATABASE_URL', reason: 'la CI migrerebbe la produzione con le migrazioni delle PR' },
+        {
+          secret: 'TEST_DATABASE_URL',
+          reason: 'le corse parallele migrerebbero lo stesso branch, invece di un branch Neon per corsa',
+        },
+      ],
     },
   ],
 }
@@ -37,10 +40,12 @@ const DEPLOY_INPUTS: ActionInputs = {
     {
       name: 'database-url',
       reason: "le migrazioni del deploy non hanno l'indirizzo di produzione",
-      notFrom: {
-        secret: 'TEST_DATABASE_URL',
-        reason: 'le migrazioni girerebbero sul branch di test, e la produzione partirebbe con lo schema di prima',
-      },
+      notFrom: [
+        {
+          secret: 'TEST_DATABASE_URL',
+          reason: 'le migrazioni girerebbero sul branch di test, e la produzione partirebbe con lo schema di prima',
+        },
+      ],
     },
   ],
 }

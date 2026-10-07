@@ -7,11 +7,11 @@ inputs:
     required: false
     default: 'false'
   migrate:
-    description: 'Lo script delle migrazioni, per esempio `db:migrate`: le applica al branch di test prima di `pnpm run ci`'
+    description: 'Lo script delle migrazioni, per esempio `db:migrate`: le applica al database della corsa prima di `pnpm run ci`'
     required: false
     default: ''
   database-url:
-    description: "L'indirizzo del branch di test: il progetto passa il proprio segreto TEST_DATABASE_URL"
+    description: "L'indirizzo del database della corsa: il branch Neon che il workflow del progetto crea per la corsa"
     required: false
     default: ''
 
@@ -47,7 +47,7 @@ runs:
         TEST_DATABASE_URL: ${{ inputs.database-url }}
       run: |
         if [ -z "$TEST_DATABASE_URL" ]; then
-          echo "::notice::database-url è vuoto, come sulle PR di Dependabot o da un fork: il branch di test non si migra, e i test di integrazione si saltano"
+          echo "::notice::database-url è vuoto, come sulle PR di Dependabot o da un fork, dove il branch della corsa non nasce: non si migra niente, e i test di integrazione si saltano"
           exit 0
         fi
         pnpm exec officina migrate --script "$MIGRATE"
