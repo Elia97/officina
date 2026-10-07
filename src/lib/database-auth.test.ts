@@ -24,7 +24,11 @@ const COMPLETE: Record<string, string> = {
     'ci',
     '        with:\n          migrate: db:migrate\n          database-url: postgres://branch-di-test\n',
   ),
-  '.github/workflows/deploy.yml': workflow('deploy', 'deploy', '        with:\n          migrate: db:migrate\n'),
+  '.github/workflows/deploy.yml': workflow(
+    'deploy',
+    'deploy',
+    '        with:\n          migrate: db:migrate\n          database-url: postgres://produzione\n',
+  ),
 }
 
 const SCRIPTS = { scripts: { 'db:generate': 'drizzle-kit generate', 'db:migrate': 'drizzle-kit migrate' } }
@@ -55,7 +59,7 @@ describe('databaseAuthGaps', () => {
     })
     const gaps = databaseAuthGaps(files, {}, ['database', 'auth'])
 
-    expect(gaps).toHaveLength(7)
+    expect(gaps).toHaveLength(8)
     expect(gaps.every(({ severity }) => severity === 'warning')).toBe(true)
   })
 })
@@ -79,6 +83,28 @@ describe('databaseAuthGaps con il database', () => {
       '`Elia97/officina/actions/ci` non riceve `migrate`: il branch di test non si migra prima dei test',
       '`Elia97/officina/actions/ci` non riceve `database-url`: i test di integrazione si saltano',
       '`Elia97/officina/actions/deploy` non riceve `migrate`: la produzione parte con lo schema di prima',
+      "`Elia97/officina/actions/deploy` non riceve `database-url`: le migrazioni del deploy non hanno l'indirizzo di produzione",
+    ])
+  })
+
+  it('avvisa quando il deploy riceve il branch di test, o la CI la produzione', () => {
+    const secret = (name: string) => `\${{ secrets.${name} }}`
+    const files = project({
+      '.github/workflows/ci.yml': workflow(
+        'ci',
+        'ci',
+        `        with:\n          migrate: db:migrate\n          database-url: ${secret('PRODUCTION_DATABASE_URL')}\n`,
+      ),
+      '.github/workflows/deploy.yml': workflow(
+        'deploy',
+        'deploy',
+        `        with:\n          migrate: db:migrate\n          database-url: ${secret('TEST_DATABASE_URL')}\n`,
+      ),
+    })
+
+    expect(messages(databaseAuthGaps(files, SCRIPTS, ['database']))).toEqual([
+      '`Elia97/officina/actions/ci` riceve `database-url` da `PRODUCTION_DATABASE_URL`: la CI migrerebbe la produzione con le migrazioni delle PR',
+      '`Elia97/officina/actions/deploy` riceve `database-url` da `TEST_DATABASE_URL`: le migrazioni girerebbero sul branch di test, e la produzione partirebbe con lo schema di prima',
     ])
   })
 })

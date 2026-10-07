@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -11,7 +11,6 @@ import { fakePnpm } from '../lib/test-helpers/fake-pnpm.ts'
 const BIN = fileURLToPath(new URL('../bin.ts', import.meta.url))
 const TEST_URL = 'postgres://prova@ep-test.neon.tech/neondb'
 const PRODUCTION_URL = 'postgres://produzione@ep-prod.neon.tech/neondb'
-const PULLED = '.vercel/.env.production.local'
 
 const dirs: string[] = []
 
@@ -23,13 +22,6 @@ function project(config?: string): string {
   const root = mkdtempSync(join(tmpdir(), 'officina-migrate-'))
   dirs.push(root)
   if (config !== undefined) writeFileSync(join(root, 'officina.config.mjs'), config)
-  return root
-}
-
-function pulled(content: string): string {
-  const root = project()
-  mkdirSync(join(root, '.vercel'))
-  writeFileSync(join(root, PULLED), content)
   return root
 }
 
@@ -90,17 +82,13 @@ describe('officina migrate', () => {
   })
 })
 
-describe('officina migrate --env', () => {
-  const FROM_FILE = `con l'indirizzo di \`${PULLED}\``
-
-  it("lancia lo script con l'indirizzo del file, e nient'altro di nuovo", () => {
-    const root = pulled(`DATABASE_URL_UNPOOLED="${PRODUCTION_URL}"\nVERCEL="1"\n`)
-
-    const { status, stdout, stderr } = migrate(root, {}, ['--env', PULLED])
+describe('officina migrate --production', () => {
+  it("lancia lo script con l'indirizzo di PRODUCTION_DATABASE_URL, e nient'altro di nuovo", () => {
+    const { status, stdout, stderr } = migrate(project(), { PRODUCTION_DATABASE_URL: PRODUCTION_URL }, ['--production'])
 
     expect(status).toBe(0)
     expect(stdout).toBe(
-      `${header('DATABASE_URL_UNPOOLED', FROM_FILE)}pnpm run db:migrate\nDATABASE_URL_UNPOOLED=${PRODUCTION_URL}\n`,
+      `${header('DATABASE_URL_UNPOOLED', "in produzione, con l'indirizzo")}pnpm run db:migrate\nDATABASE_URL_UNPOOLED=${PRODUCTION_URL}\n`,
     )
     expect(stderr).toBe('')
   })
@@ -111,26 +99,27 @@ describe('officina migrate --env', () => {
       '::add-mask::p%2525ss',
       '::add-mask::p%25ss',
     ].join('\n')
-    const root = pulled('DATABASE_URL_UNPOOLED="postgres://produzione:p%25ss@ep-prod.neon.tech/neondb"\n')
+    const url = 'postgres://produzione:p%25ss@ep-prod.neon.tech/neondb'
     const scriptLine = { FAKE_PNPM_STDERR: 'una riga dello script' }
 
-    const fromFile = migrate(root, { GITHUB_ACTIONS: 'true', ...scriptLine }, ['--env', PULLED])
-    const fromTest = migrate(root, { GITHUB_ACTIONS: 'true', TEST_DATABASE_URL: TEST_URL })
+    const fromProduction = migrate(project(), { GITHUB_ACTIONS: 'true', PRODUCTION_DATABASE_URL: url, ...scriptLine }, [
+      '--production',
+    ])
+    const fromTest = migrate(project(), { GITHUB_ACTIONS: 'true', TEST_DATABASE_URL: TEST_URL })
 
-    expect(fromFile.stdout.slice(0, masks.length + 1)).toBe(`${masks}\n`)
-    expect(fromFile.stderr).toBe(`${masks}\nuna riga dello script\n`)
+    expect(fromProduction.stdout.slice(0, masks.length + 1)).toBe(`${masks}\n`)
+    expect(fromProduction.stderr).toBe(`${masks}\nuna riga dello script\n`)
     expect(fromTest.stdout.split('\n')[0]).toBe(`::add-mask::${TEST_URL}`)
     expect(fromTest.stderr).toBe(`::add-mask::${TEST_URL}\n`)
   })
 
-  it('senza il file, o con la chiave Secret, non lancia lo script ed esce 1', () => {
-    const missing = migrate(project(), {}, ['--env', PULLED])
-    const sensitive = migrate(pulled('DATABASE_URL_UNPOOLED="[SENSITIVE]"\n'), {}, ['--env', PULLED])
+  it("senza l'indirizzo di produzione non lancia lo script, ed esce 1", () => {
+    const { status, stdout, stderr } = migrate(project(), { TEST_DATABASE_URL: TEST_URL }, ['--production'])
 
-    expect(missing.status).toBe(1)
-    expect(missing.stderr).toContain(`✗ ${PULLED} non c'è: lo scrive vercel pull, prima delle migrazioni.`)
-    expect(sensitive.status).toBe(1)
-    expect(sensitive.stderr).toContain('✗ `DATABASE_URL_UNPOOLED` è Secret su Vercel')
-    expect(`${missing.stdout}${sensitive.stdout}`).toBe('')
+    expect(status).toBe(1)
+    expect(stderr).toContain(
+      "✗ `PRODUCTION_DATABASE_URL` è vuota: è l'indirizzo di produzione, che `actions/deploy` riceve con `database-url` dal segreto `PRODUCTION_DATABASE_URL` dell'environment `production`, dichiarato dal job di deploy.",
+    )
+    expect(stdout).toBe('')
   })
 })

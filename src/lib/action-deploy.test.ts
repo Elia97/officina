@@ -94,7 +94,7 @@ const BIN = fakePnpm()
 afterAll(() => rmSync(BIN, { recursive: true, force: true }))
 
 describe('il deploy e le migrazioni', () => {
-  it('le applica dopo `vercel pull` e il controllo del suo file, prima della build, solo quando il progetto dichiara `migrate`', () => {
+  it('le applica dopo i controlli di `vercel pull`, subito prima della build, solo quando il progetto dichiara `migrate`', () => {
     const order = [
       position((run) => /^pnpm dlx vercel@\S+ pull\b/.test(run)),
       position((run) => run === 'pnpm run check:placeholders --env .vercel/.env.production.local'),
@@ -106,30 +106,34 @@ describe('il deploy e le migrazioni', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(named(MIGRATIONS).if).toBe(expression("inputs.migrate != ''"))
     expect(inputs.migrate).toMatchObject({ required: false, default: '' })
+    expect(inputs['database-url']).toMatchObject({ required: false, default: '' })
   })
 
-  it('`inputs.migrate` entra solo in quel passo, che non riceve il token di Vercel e non va avanti dopo un errore', () => {
-    const receiving = runs.steps.filter((candidate) => JSON.stringify(candidate).includes('inputs.migrate'))
+  it('`migrate` e `database-url` entrano solo in quel passo, che non riceve il token di Vercel e non va avanti dopo un errore', () => {
+    const receiving = (input: string) =>
+      runs.steps.filter((candidate) => JSON.stringify(candidate).includes(input)).map(({ name }) => name)
 
-    expect(receiving.map(({ name }) => name)).toEqual([MIGRATIONS])
+    expect(receiving('inputs.migrate')).toEqual([MIGRATIONS])
+    expect(receiving('inputs.database-url')).toEqual([MIGRATIONS])
     expect(named(MIGRATIONS)).toEqual({
       name: MIGRATIONS,
       if: expression("inputs.migrate != ''"),
       shell: 'bash',
-      env: { MIGRATE: expression('inputs.migrate') },
-      run: 'pnpm exec officina migrate --env .vercel/.env.production.local --script "$MIGRATE"',
+      env: { MIGRATE: expression('inputs.migrate'), PRODUCTION_DATABASE_URL: expression('inputs.database-url') },
+      run: 'pnpm exec officina migrate --production --script "$MIGRATE"',
     })
   })
 
-  it('la shell lancia officina migrate sul file di vercel pull, con lo script del progetto', () => {
+  it("la shell lancia officina migrate in produzione, con lo script e l'indirizzo del progetto", () => {
     const { status, stdout } = shell(MIGRATIONS, checkout(), {
       PATH: `${BIN}:${process.env.PATH}`,
       MIGRATE: 'db:migrate',
+      PRODUCTION_DATABASE_URL: 'postgres://produzione@ep-prod.neon.tech/neondb',
     })
 
     expect(status).toBe(0)
     expect(stdout).toBe(
-      'pnpm exec officina migrate --env .vercel/.env.production.local --script db:migrate\nMIGRATE=db:migrate\n',
+      'pnpm exec officina migrate --production --script db:migrate\nMIGRATE=db:migrate\nPRODUCTION_DATABASE_URL=postgres://produzione@ep-prod.neon.tech/neondb\n',
     )
   })
 
