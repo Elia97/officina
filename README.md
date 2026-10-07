@@ -146,9 +146,14 @@ I passi dei workflow stanno in `actions/` di questo repository, come composite a
 | `actions/lighthouse` | build equivalente alla produzione e `pnpm run lhci` | trigger, etichetta, `continue-on-error` |
 
 ```yaml
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -179,7 +184,11 @@ I tre segreti sono input obbligatori e l'action li mette nell'`env` dei soli tre
 
 Prima di `pnpm run ci` l'action lancia `officina migrate --script <migrate>`, che legge `database.migrationUrlKey` da `officina.config.ts` e dà l'indirizzo allo script sotto quella chiave, e solo sotto quella. `pnpm run ci` lo riceve come `TEST_DATABASE_URL`, per i test di integrazione. La build e `check:secrets` lo ricevono come `DATABASE_URL`, al posto del canary: una pagina prerenderizzata dal database lo legge davvero, e `check secrets` cerca il valore che la build ha ricevuto. Gli altri passi non lo vedono, e senza `database-url` i comandi ricevono l'ambiente del job com'è. Con `migrate` e il segreto vuoto, come sulle PR di Dependabot e su quelle da un fork, l'action non migra, lo dice con un `::notice::` e prosegue: i test di integrazione si saltano da soli, e la build riceve il canary. Le PR di Dependabot ricevono solo i segreti di Dependabot: per avere l'integrazione anche lì, `TEST_DATABASE_URL` va anche fra quelli, e allora l'indirizzo arriva al codice di ogni aggiornamento, quindi il branch di test non deve contenere dati veri. Senza il segreto, una pagina prerenderizzata dal database non ha un database da leggere, e la build si ferma.
 
-**Le migrazioni al deploy.** Con un database, anche `actions/deploy` riceve lo script delle migrazioni, `migrate: db:migrate` in `with:`. Dopo `vercel pull` e `check:placeholders --env`, prima di `vercel build`, l'action lancia `officina migrate --env .vercel/.env.production.local --script <migrate>`: l'indirizzo è quello delle variabili di Production su Vercel, che restano l'unica fonte, e lo script lo riceve sotto `database.migrationUrlKey`, l'unica variabile del file che gli si aggiunge. Su Vercel quella variabile va Encrypted e collegata a Production: di una Sensitive `vercel pull` non scarica il valore, e il comando si ferma dicendolo, come con una chiave assente o vuota. L'indirizzo non è un segreto di GitHub, quindi il runner non lo maschera da sé: il comando lo registra con `::add-mask::` prima di lanciare lo script. Le migrazioni devono essere additive. Si applicano prima della build: se poi la build o il deploy falliscono, la produzione resta sul codice di prima con lo schema nuovo, e se fallisce lo smoke promuovere il deployment precedente non riporta indietro lo schema. Una migrazione distruttiva, che toglie o rinomina, esce da sola nella sua release, dopo quella in cui il codice ha smesso di usare ciò che toglie.
+**Le migrazioni al deploy.** Con un database, anche `actions/deploy` riceve lo script delle migrazioni, `migrate: db:migrate` in `with:`. Dopo `vercel pull` e `check:placeholders --env`, prima di `vercel build`, l'action lancia `officina migrate --env .vercel/.env.production.local --script <migrate>`: l'indirizzo è quello delle variabili di Production su Vercel, che restano l'unica fonte, e lo script lo riceve sotto `database.migrationUrlKey`, l'unica variabile del file che gli si aggiunge. Su Vercel quella variabile va Encrypted e collegata a Production: di una Sensitive `vercel pull` non scarica il valore, e il comando si ferma dicendolo, come con una chiave assente o vuota. L'indirizzo non è un segreto di GitHub, quindi il runner non lo maschera da sé: il comando lo registra con `::add-mask::` prima di lanciare lo script.
+
+**Migrazioni compatibili con la produzione.** Le migrazioni si applicano prima della build: se poi la build o il deploy falliscono, la produzione resta sul codice di prima con lo schema nuovo, e lo schema non torna indietro né promuovendo il deployment precedente, quando fallisce lo smoke, né deployando un tag più vecchio. Ogni migrazione deve quindi reggere il codice in produzione, e additiva non basta: lo rompono, senza togliere niente, un `NOT NULL` senza default, un `UNIQUE`, un `CHECK` o una chiave esterna nuovi su dati che quel codice scrive, come un cambio di tipo o un vincolo più stretto. Ciò che toglie arriva dopo: una colonna si toglie quando nessun deployment che si potrebbe promuovere la legge più, e una rinomina passa da una colonna nuova, che il codice scrive insieme alla vecchia, prima di togliere la vecchia in una release successiva.
+
+**Un tempo massimo.** Il passo delle migrazioni non ne ha uno, e il passo di una composite action non accetta `timeout-minutes`. Una migrazione che aspetta un lock blocca, finché non lo ottiene, le query di produzione su quella tabella: le migrazioni del progetto chiedono un `lock_timeout`, con `SET lock_timeout` di Postgres in testa al file, e il job di deploy un `timeout-minutes`, come nell'esempio del deploy.
 
 Quello che si scarica al volo è fissato a una versione esatta, in un posto solo: la CLI di Vercel in `actions/deploy/action.yml`, `@lhci/cli` in `src/checks/lighthouse.ts`, `serve` in `src/sh/lhci-local.sh`. Che i primi due siano esatti, uguali ovunque e non indietro di una major su npm lo guarda ogni lunedì `.github/workflows/vercel-cli.yml`, con `officina check vercel-cli`.
 
