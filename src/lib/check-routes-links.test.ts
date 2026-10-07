@@ -59,10 +59,10 @@ describe('findingsFor: i nomi senza cartella', () => {
     expect(findingsFor('CLAUDE.md', 'vedi `ARCHITECTURE.md` e `README.md`')).toEqual([])
   })
 
-  it('controlla i file di configurazione della radice di vetrina, e nessun altro nome', () => {
-    const doc = '`vercel.json`, `package.json`, `property-detail.astro`, `site.ts`'
+  it('controlla i file di configurazione della radice di vetrina e drizzle.config.ts, e nessun altro nome', () => {
+    const doc = '`vercel.json`, `package.json`, `drizzle.config.ts`, `property-detail.astro`, `site.ts`'
 
-    expect(findingsFor('README.md', doc)).toEqual([missing(1, 'vercel.json')])
+    expect(findingsFor('README.md', doc)).toEqual([missing(1, 'vercel.json'), missing(1, 'drizzle.config.ts')])
   })
 
   it.each([

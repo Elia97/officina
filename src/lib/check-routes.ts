@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { posix } from 'node:path'
 
 import type { Hit } from './cli.ts'
+import { DRIZZLE_CONFIG } from './database-auth.ts'
 import { blankFences, blankSpans, linkDestinations } from './markdown.ts'
 
 const SCANNED = /\.md$/
@@ -15,7 +16,7 @@ const IGNORED = [
   /^docs\/sources\//,
 ]
 
-const PATH_REFERENCE = /`((?:docs|src|scripts|test|e2e|public|\.claude|\.github)\/[A-Za-z0-9._/-]+\.[a-z]+)`/g
+const PATH_REFERENCE = /`((?:docs|src|scripts|test|e2e|public|drizzle|\.claude|\.github)\/[A-Za-z0-9._/-]+\.[a-z]+)`/g
 const NAME_REFERENCE = /`([A-Za-z0-9._-]+)`/g
 // La virgola non delimita: i titoli la contengono.
 const SECTION_REFERENCE = /`([A-Za-z0-9._/-]+\.md)`\s*§\s*([^.·|)§]{1,80})/g
@@ -23,7 +24,7 @@ const LINK_TEXT = /\[[^[\]]*\]\(/g
 
 const ROOT_DOCUMENT = /^[A-Z][A-Z0-9_-]*\.md$/
 // I file tracciati alla radice di template/vetrina (git ls-files), Markdown esclusi.
-const ROOT_CONFIG: ReadonlySet<string> = new Set([
+const VETRINA_ROOT = [
   '.editorconfig',
   '.env.example',
   '.fallowrc.jsonc',
@@ -45,7 +46,8 @@ const ROOT_CONFIG: ReadonlySet<string> = new Set([
   'tsconfig.json',
   'vercel.json',
   'vitest.config.ts',
-])
+]
+const ROOT_CONFIG: ReadonlySet<string> = new Set([...VETRINA_ROOT, DRIZZLE_CONFIG])
 const CHANGELOG = /(?:^|\/)CHANGELOG\.md$/
 const SITE_CONTENT = /^src\/content\//
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|#|\/)/i
