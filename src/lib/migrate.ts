@@ -19,17 +19,36 @@ export function migrationEnv(env: Env, key: string): MigrationEnv {
 }
 
 export function fileMigrationEnv(env: Env, content: string, key: string): MigrationEnv {
-  const url = parseEnv(content)[key]
-  if (url === undefined) {
+  const value = parseEnv(content)[key]
+  if (value === undefined) {
     return {
       error: `\`${key}\` non c'è fra le variabili di Production che vercel pull ha scaricato: va aggiunta su Vercel, Encrypted e collegata a Production`,
     }
   }
-  if (url.trim() === '') return { error: `\`${key}\` è vuota fra le variabili di Production su Vercel` }
-  if (url.trim() === SENSITIVE) {
+  // `vercel build` 62.2.0 rilegge il file con dotenv@4, che fa `trim()` sul valore.
+  const url = value.trim()
+  if (url === '') {
+    return {
+      error: `\`${key}\` è vuota fra le variabili di Production su Vercel: va riempita con l'indirizzo del database per le migrazioni`,
+    }
+  }
+  if (url === SENSITIVE) {
     return {
       error: `\`${key}\` è Sensitive su Vercel, e vercel pull non ne scarica il valore: va Encrypted, collegata a Production`,
     }
   }
   return { env: { ...env, [key]: url }, url }
+}
+
+const decoded = (text: string): string => {
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return text
+  }
+}
+
+export function maskedValues(url: string): string[] {
+  const password = URL.parse(url)?.password ?? ''
+  return [...new Set(password === '' ? [url] : [url, password, decoded(password)])]
 }
