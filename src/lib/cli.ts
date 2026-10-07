@@ -60,6 +60,8 @@ export function scopedPaths(options: CliOptions, isScanned: (path: string) => bo
 // I workflow command di GitHub vogliono %, CR e LF codificati nel messaggio.
 const escapeForGitHub = (text: string) => text.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
 
+export const maskCommand = (value: string): string => `::add-mask::${escapeForGitHub(value)}`
+
 export function printFindings(findings: Finding[], format: string): void {
   for (const finding of findings) {
     const location = finding.line === undefined ? '' : `:${finding.line}`
