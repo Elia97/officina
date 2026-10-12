@@ -54,6 +54,13 @@ describe('officina', () => {
     expect(lines.join('\n')).toContain('manca `--script`')
   })
 
+  it('scope fuori da GitHub Actions sceglie il percorso completo ed esce 0', async () => {
+    const lines = silence()
+
+    expect(await run(['scope'])).toBe(0)
+    expect(lines).toContain('docs-only=false')
+  })
+
   it('doctor esce 1 sul progetto di prova, che non ha tutti i punti di aggancio', async () => {
     const lines = silence()
 

@@ -25,13 +25,13 @@ export const trackedAndUntracked = (): string[] => [
   ...gitPaths('ls-files', ['--others', '--exclude-standard']),
 ]
 
-function ensureCommit(ref: string): void {
+function ensureCommit(ref: string, { shallow = false } = {}): void {
   const exists = spawnSync('git', ['cat-file', '-e', `${ref}^{commit}`], {
     stdio: 'ignore',
   })
   if (exists.status === 0) return
   // Checkout shallow in CI: la base della PR spesso non c'è in locale.
-  git(['fetch', '--no-tags', 'origin', ref])
+  git(['fetch', '--no-tags', ...(shallow ? ['--depth=1'] : []), 'origin', ref])
 }
 
 function defaultBase(): string {
@@ -50,12 +50,31 @@ function defaultBase(): string {
   throw new Error('nessuna base trovata: passa --base <ref>')
 }
 
+const eventPayload = (name: string) => {
+  const { GITHUB_EVENT_NAME, GITHUB_EVENT_PATH } = process.env
+  if (GITHUB_EVENT_NAME !== name || !GITHUB_EVENT_PATH || !existsSync(GITHUB_EVENT_PATH)) return undefined
+  return JSON.parse(readFileSync(GITHUB_EVENT_PATH, 'utf8'))
+}
+
 // Sulle PR GitHub il diff va fatto tra gli SHA dell'evento, non tra branch locali.
 function pullRequestShas(): { base: string; head: string } | undefined {
-  const { GITHUB_EVENT_NAME, GITHUB_EVENT_PATH } = process.env
-  if (GITHUB_EVENT_NAME !== 'pull_request' || !GITHUB_EVENT_PATH || !existsSync(GITHUB_EVENT_PATH)) return undefined
-  const { pull_request: pr } = JSON.parse(readFileSync(GITHUB_EVENT_PATH, 'utf8'))
+  const pr = eventPayload('pull_request')?.pull_request
   return pr?.base?.sha && pr?.head?.sha ? { base: pr.base.sha, head: pr.head.sha } : undefined
+}
+
+// Il primo push di un branch porta come `before` uno SHA tutto zeri, che non è un commit.
+function pushBefore(): string | undefined {
+  const before = eventPayload('push')?.before
+  return typeof before === 'string' && !/^0+$/.test(before) ? before : undefined
+}
+
+export const eventBase = (): string | undefined => pullRequestShas()?.base ?? pushBefore()
+
+export function changedSince(base: string): string[] {
+  ensureCommit(base, { shallow: true })
+  // Con il rilevamento delle rinomine, attivo di default, `--name-only` elenca solo il percorso nuovo;
+  // `submodule.<nome>.ignore = all` in .gitmodules toglie dal diff anche un sottomodulo aggiornato.
+  return gitPaths('diff', ['--name-only', '--no-renames', '--ignore-submodules=none', base, 'HEAD'])
 }
 
 export type DiffScope = { base?: string | undefined; head?: string | undefined }
