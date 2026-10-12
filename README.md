@@ -285,7 +285,9 @@ I sorgenti sono TypeScript, ma il pacchetto pubblica JavaScript: Node toglie i t
 
 ## Pubblicare
 
-**Una release a settimana**, salvo una rottura che ferma un progetto: le correzioni si accumulano su `main` ed escono insieme. Ogni release è un aggiornamento da portare in ogni progetto e nel template, e il gruppo `officina` di Dependabot lo propone una volta a settimana: rilasciare più spesso non lo fa arrivare prima, moltiplica soltanto le PR da seguire.
+**Finché officina cambia spesso, una release quando una modifica è pronta.** I progetti la ricevono a mano, perché la PR del gruppo `officina` di Dependabot non passa `doctor`: aspettare la settimana rimanderebbe soltanto la correzione che un progetto aspetta.
+
+**Poi una release a settimana**, salvo una rottura che ferma un progetto. Il passaggio si decide, non scatta da solo. Le correzioni si accumuleranno su `main` per uscire insieme: ogni release è un aggiornamento da portare in ogni progetto e nel template, e il gruppo `officina` di Dependabot lo propone una volta a settimana. Rilasciare più spesso non lo fa arrivare prima, moltiplica soltanto le PR da seguire.
 
 ```sh
 npm pkg set version=X.Y.Z
