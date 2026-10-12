@@ -83,7 +83,7 @@ runs:
     - run: pnpm run check:links
       shell: bash
 
-    # TODO: dalla 0.13.0 `check:secrets` è un errore di doctor: togli --if-present.
+    # TODO: dalla 0.14.0 `check:secrets` è un errore di doctor: togli --if-present.
     - name: pnpm run check:secrets
       shell: bash
       env:

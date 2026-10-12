@@ -80,7 +80,7 @@ function secretGaps(source: string | undefined, keys: readonly string[]): Contra
   })
 }
 
-// TODO: dalla 0.13.0 i requisiti del database e dell'autenticazione sono errori di doctor: togli `severity`.
+// TODO: dalla 0.14.0 i requisiti del database e dell'autenticazione sono errori di doctor: togli `severity`.
 const asWarning = (gap: ContractGap): ContractGap => ({ ...gap, severity: 'warning' })
 
 export function databaseAuthGaps(

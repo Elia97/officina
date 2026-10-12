@@ -34,7 +34,7 @@ const hasCspMeta = (html: string): boolean =>
       SCRIPT_SRC.test(attributeValue(tag, CONTENT)),
   )
 
-// TODO: dalla 0.13.0 un'anomalia di una pagina resa a richiesta fa fallire lo smoke: qui `warn` diventa `fail`.
+// TODO: dalla 0.14.0 un'anomalia di una pagina resa a richiesta fa fallire lo smoke: qui `warn` diventa `fail`.
 const warn = (check: string, detail: string): CheckResult => ({ check, status: 'warn', detail })
 
 function redirect(check: string, response: SmokeResponse, url: string): CheckResult {
