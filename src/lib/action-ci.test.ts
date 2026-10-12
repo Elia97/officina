@@ -51,7 +51,7 @@ describe('actions/ci e il database di test', () => {
   it('migra il branch di test prima di `pnpm run ci`, solo quando il progetto dichiara `migrate`', () => {
     expect(position(MIGRATE)).toBeGreaterThanOrEqual(0)
     expect(position(MIGRATE)).toBeLessThan(position('pnpm run ci'))
-    expect(named(MIGRATIONS).if).toBe(expression("inputs.migrate != ''"))
+    expect(named(MIGRATIONS).if).toBe(expression("inputs.migrate != '' && steps.scope.outputs.docs-only != 'true'"))
     expect(named(MIGRATIONS).env).toEqual({
       MIGRATE: expression('inputs.migrate'),
       TEST_DATABASE_URL: expression('inputs.database-url'),
