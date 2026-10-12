@@ -49,7 +49,7 @@ describe('databaseAuthGaps', () => {
     expect(databaseAuthGaps(project({ 'astro.config.mjs': undefined }), {}, [])).toEqual([])
   })
 
-  it('ogni mancanza è un avviso, anche quelle dei workflow e dello schema', () => {
+  it('ogni mancanza è un errore, anche quelle dei workflow e dello schema', () => {
     const files = project({
       'astro.config.mjs':
         "export default defineConfig({ env: { schema: { DATABASE_URL: envField.string({ context: 'server', access: 'public' }) } } })\n",
@@ -60,7 +60,7 @@ describe('databaseAuthGaps', () => {
     const gaps = databaseAuthGaps(files, {}, ['database', 'auth'])
 
     expect(gaps).toHaveLength(8)
-    expect(gaps.every(({ severity }) => severity === 'warning')).toBe(true)
+    expect(gaps.some(({ severity }) => severity === 'warning')).toBe(false)
   })
 })
 
@@ -87,7 +87,7 @@ describe('databaseAuthGaps con il database', () => {
     ])
   })
 
-  it('avvisa quando il deploy riceve il branch di test, o la CI la produzione', () => {
+  it('segnala quando il deploy riceve il branch di test, o la CI la produzione', () => {
     const secret = (name: string) => `\${{ secrets.${name} }}`
     const files = project({
       '.github/workflows/ci.yml': workflow(
@@ -110,7 +110,7 @@ describe('databaseAuthGaps con il database', () => {
 })
 
 describe('databaseAuthGaps e il database della CI', () => {
-  it('avvisa quando la CI riceve un branch di test condiviso, invece di quello della corsa', () => {
+  it('segnala quando la CI riceve un branch di test condiviso, invece di quello della corsa', () => {
     const files = project({
       '.github/workflows/ci.yml': workflow(
         'ci',

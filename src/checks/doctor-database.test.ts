@@ -16,7 +16,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-async function doctorInRepository(files: Record<string, string>): Promise<{ said: string; code: number }> {
+async function doctorInRepository(files: Record<string, string>): Promise<{ said: string }> {
   const root = mkdtempSync(join(tmpdir(), 'officina-doctor-database-'))
   roots.push(root)
   for (const [name, source] of Object.entries(files)) writeFileSync(join(root, name), source)
@@ -25,9 +25,9 @@ async function doctorInRepository(files: Record<string, string>): Promise<{ said
 
   const lines: string[] = []
   vi.spyOn(console, 'log').mockImplementation((line: string) => void lines.push(line))
-  const code = await doctor()
+  await doctor()
   vi.restoreAllMocks()
-  return { said: lines.join('\n'), code }
+  return { said: lines.join('\n') }
 }
 
 const errors = (said: string) => said.split('\n').filter((line) => line.includes('✗')).length
@@ -44,22 +44,20 @@ describe('doctor con un database e l’autenticazione', () => {
     expect(said).not.toContain('database e autenticazione')
   })
 
-  it('con le due librerie e nient’altro elenca le mancanze come avvisi', async () => {
+  it('con le due librerie e nient’altro elenca le mancanze come errori', async () => {
     const { said } = await doctorInRepository({ 'package.json': manifest({ ...DRIZZLE, ...BETTER_AUTH }) })
 
     expect(said).toContain('  database e autenticazione: 4')
-    expect(said).toContain('· package.json: script `db:migrate` assente')
-    expect(said).toContain('· drizzle.config.ts: manca')
-    expect(said).toContain('· astro.config.mjs: manca')
-    expect(said).not.toMatch(/✗ (drizzle\.config\.ts|astro\.config\.mjs)/)
+    expect(said).toContain('✗ package.json: script `db:migrate` assente')
+    expect(said).toContain('✗ drizzle.config.ts: manca')
+    expect(said).toContain('✗ astro.config.mjs: manca')
   })
 
-  it('le sue mancanze non aggiungono errori: doctor esce come senza le due librerie', async () => {
+  it('ogni sua mancanza è un errore in più rispetto a doctor senza le due librerie', async () => {
     const without = await doctorInRepository({ 'package.json': manifest({}) })
     const withLibraries = await doctorInRepository({ 'package.json': manifest({ ...DRIZZLE, ...BETTER_AUTH }) })
 
-    expect(errors(withLibraries.said)).toBe(errors(without.said))
-    expect(withLibraries.code).toBe(without.code)
+    expect(errors(withLibraries.said)).toBe(errors(without.said) + 4)
   })
 
   it('con features.database: false non chiede il database, e lo dice', async () => {

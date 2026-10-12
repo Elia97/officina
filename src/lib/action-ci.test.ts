@@ -39,7 +39,7 @@ describe('actions/ci e i canary di check secrets', () => {
       'pnpm run ci',
       'pnpm exec officina check secrets --canaries >> "$GITHUB_ENV"',
       'pnpm run build',
-      'pnpm run --if-present check:secrets',
+      'pnpm run check:secrets',
     ].map(position)
 
     expect(order.every((index) => index >= 0)).toBe(true)
@@ -117,21 +117,21 @@ describe('la shell delle migrazioni', () => {
 const JOB = { DATABASE_URL: CANARY, TEST_DATABASE_URL: 'postgres://dal-job' }
 
 describe.each([
-  ['pnpm run ci', 'pnpm run ci', {}, 'TEST_DATABASE_URL'],
-  ['pnpm run build', 'pnpm run build', { DATABASE_URL: CANARY }, 'DATABASE_URL'],
-  ['pnpm run check:secrets', 'pnpm run --if-present check:secrets', { DATABASE_URL: CANARY }, 'DATABASE_URL'],
-])('la shell di «%s»', (name, launched, before: Record<string, string>, as) => {
+  ['pnpm run ci', {}, 'TEST_DATABASE_URL'],
+  ['pnpm run build', { DATABASE_URL: CANARY }, 'DATABASE_URL'],
+  ['pnpm run check:secrets', { DATABASE_URL: CANARY }, 'DATABASE_URL'],
+])('la shell di «%s»', (name, before: Record<string, string>, as) => {
   it(`con l'indirizzo lo dà al comando come ${as}, e nient'altro`, () => {
     const { status, stdout } = step(name, { 'database-url': TEST_URL }, before)
 
     expect(status).toBe(0)
-    expect(stdout).toBe(`${launched}\n${as}=${TEST_URL}\n`)
+    expect(stdout).toBe(`${name}\n${as}=${TEST_URL}\n`)
   })
 
   it("senza l'indirizzo lancia il comando con l'ambiente del job com'è", () => {
     const { status, stdout } = step(name, {}, JOB)
 
     expect(status).toBe(0)
-    expect(stdout).toBe(`${launched}\nDATABASE_URL=${CANARY}\nTEST_DATABASE_URL=postgres://dal-job\n`)
+    expect(stdout).toBe(`${name}\nDATABASE_URL=${CANARY}\nTEST_DATABASE_URL=postgres://dal-job\n`)
   })
 })

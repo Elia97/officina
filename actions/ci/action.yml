@@ -83,7 +83,6 @@ runs:
     - run: pnpm run check:links
       shell: bash
 
-    # TODO: dalla 0.14.0 `check:secrets` è un errore di doctor: togli --if-present.
     - name: pnpm run check:secrets
       shell: bash
       env:
@@ -92,7 +91,7 @@ runs:
         # pnpm run check:secrets
         [ -z "$OFFICINA_TEST_DATABASE_URL" ] || export DATABASE_URL="$OFFICINA_TEST_DATABASE_URL"
         unset OFFICINA_TEST_DATABASE_URL
-        pnpm run --if-present check:secrets
+        pnpm run check:secrets
 
     - name: Cache del browser di Playwright
       if: ${{ inputs.e2e == 'true' }}

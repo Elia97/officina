@@ -34,15 +34,14 @@ const hasCspMeta = (html: string): boolean =>
       SCRIPT_SRC.test(attributeValue(tag, CONTENT)),
   )
 
-// TODO: dalla 0.14.0 un'anomalia di una pagina resa a richiesta fa fallire lo smoke: qui `warn` diventa `fail`.
-const warn = (check: string, detail: string): CheckResult => ({ check, status: 'warn', detail })
+const fail = (check: string, detail: string): CheckResult => ({ check, status: 'fail', detail })
 
 function redirect(check: string, response: SmokeResponse, url: string): CheckResult {
   const location = response.headers.get('location')
-  if (location === null) return warn(check, `risponde ${response.status} senza location`)
+  if (location === null) return fail(check, `risponde ${response.status} senza location`)
   const target = new URL(location, url)
   const { origin } = new URL(url)
-  if (target.origin !== origin) return warn(check, `rimanda a ${target.href}, fuori da ${origin}`)
+  if (target.origin !== origin) return fail(check, `rimanda a ${target.href}, fuori da ${origin}`)
   return { check, status: 'pass' }
 }
 
@@ -53,16 +52,16 @@ async function visit({ get, baseUrl }: SmokeContext, path: string): Promise<Chec
     const response = await get(url)
     if (response.status >= 300 && response.status < 400) return redirect(check, response, url)
     if (response.status !== 200) {
-      return warn(check, `atteso 200 o un redirect sulla stessa origine, ricevuto ${response.status}`)
+      return fail(check, `atteso 200 o un redirect sulla stessa origine, ricevuto ${response.status}`)
     }
     const contentType = response.headers.get('content-type') ?? ''
     if (!contentType.includes('text/html'))
-      return warn(check, `atteso un content-type text/html, ricevuto "${contentType}"`)
+      return fail(check, `atteso un content-type text/html, ricevuto "${contentType}"`)
     if (!hasCspMeta((await response.text?.()) ?? ''))
-      return warn(check, 'manca il meta Content-Security-Policy con script-src')
+      return fail(check, 'manca il meta Content-Security-Policy con script-src')
     return { check, status: 'pass' }
   } catch (error) {
-    return warn(check, error instanceof Error ? error.message : String(error))
+    return fail(check, error instanceof Error ? error.message : String(error))
   }
 }
 
