@@ -47,7 +47,7 @@ export const CI_STEPS: readonly string[] = [
 
 const MANIFEST = 'package.json'
 
-// TODO: dalla 0.13.0 `check:secrets` è un errore di doctor: toglilo da NEW_SCRIPTS.
+// TODO: dalla 0.14.0 `check:secrets` è un errore di doctor: toglilo da NEW_SCRIPTS.
 const NEW_SCRIPTS: ReadonlySet<string> = new Set(['check:secrets'])
 
 export function scriptGaps({ scripts = {} }: Manifest): ContractGap[] {

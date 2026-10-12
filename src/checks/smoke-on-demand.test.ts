@@ -58,7 +58,7 @@ describe('check smoke e una pagina resa a richiesta', () => {
 
     expect(await checkSmoke()).toBe(0)
     expect(lines).toContain('· GET /accedi (a richiesta) — manca il meta Content-Security-Policy con script-src')
-    expect(lines).toContain('\n· 1 avviso/i: dalla 0.13.0 fanno fallire lo smoke.')
+    expect(lines).toContain('\n· 1 avviso/i: dalla 0.14.0 fanno fallire lo smoke.')
     expect(asked).toContain(`${SITE}/chi-siamo/`)
     expect(asked).not.toContain(`${SITE}/accedi/`)
   })
