@@ -18,7 +18,7 @@ import {
   type Stylesheet,
   staticClosure,
 } from '../lib/bundle-budget.ts'
-import { type CssMeasure, measureCss, routeCount } from '../lib/bundle-css.ts'
+import { type CssMeasure, inlineStyles, measureCss, rangeQueryFailures, routeCount } from '../lib/bundle-css.ts'
 import { type PageEntries, readSsr, type SsrReading } from '../lib/bundle-ssr.ts'
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
@@ -132,6 +132,17 @@ function checkCss(pages: readonly PageEntries[], cssMaxGzip: number, width: numb
   return css.failures
 }
 
+function checkRangeSyntax(): string[] {
+  const sheets = filesWithExtension(ASSETS, '.css').map((file) => ({ file, css: readFileSync(file, 'utf8') }))
+  const pages = filesWithExtension(DIST, '.html').map((file) => ({
+    file,
+    css: inlineStyles(readFileSync(file, 'utf8')),
+  }))
+  const failures = rangeQueryFailures([...sheets, ...pages])
+  if (failures.length === 0) console.log('\nMedia query in sintassi di intervallo: nessuna.')
+  return failures
+}
+
 function printSsrNote(expected: Expectations, ssr: SsrReading): void {
   for (const note of ssr.notes) console.log(`\nNOTA  ${note}`)
   if (ssr.measured || expected.ssr.length === 0) return
@@ -165,7 +176,7 @@ export async function main(): Promise<number> {
 
   const width = Math.max('ROTTA'.length, ...pages.map((p) => p.route.length))
   printPages(pages, width)
-  failures.push(...checkCss(routes, cssMaxGzip, width))
+  failures.push(...checkCss(routes, cssMaxGzip, width), ...checkRangeSyntax())
   printSsrNote(expected, ssr)
   printDisabled(expected)
 

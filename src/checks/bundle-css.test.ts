@@ -96,3 +96,36 @@ describe('una build ibrida le cui rotte SSR non si leggono', () => {
     expect(said).toContain('pesato da solo: nessuna rotta misurata lo collega')
   })
 })
+
+describe('le media query in sintassi di intervallo', () => {
+  const site = (css: string, page = '<h1>Casa</h1>\n') =>
+    project({
+      'src/pages/index.astro': '<h1>Casa</h1>\n',
+      'dist/client/_astro/main.css': css,
+      'dist/client/index.html': `${link('main.css')}${page}`,
+    })
+
+  it('fanno fallire il gate in un foglio di _astro, e il rapporto nomina il file e le query', async () => {
+    const { exitCode, said } = await run(site('@media (width>=40rem){h1{font-size:3rem}}'))
+
+    expect(exitCode).toBe(1)
+    expect(said).toContain('dist/client/_astro/main.css: media query in sintassi di intervallo')
+    expect(said).toContain('— (width>=40rem);')
+  })
+
+  it('fanno fallire il gate anche in un <style> della pagina', async () => {
+    const { exitCode, said } = await run(site(MAIN, '<style>@media (width<40rem){h1{font-size:2rem}}</style>'))
+
+    expect(exitCode).toBe(1)
+    expect(said).toContain('dist/client/index.html: media query in sintassi di intervallo')
+  })
+
+  it('con min-width il gate passa, e il rapporto lo dice', async () => {
+    const { exitCode, said } = await run(
+      site('@media (min-width:40rem){h1{font-size:3rem}}', '<style>@media (min-width:40rem){p{margin:0}}</style>'),
+    )
+
+    expect(exitCode).toBe(0)
+    expect(said).toContain('Media query in sintassi di intervallo: nessuna.')
+  })
+})

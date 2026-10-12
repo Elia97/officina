@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { measureCss, type RouteStylesheets, routeCount } from './bundle-css.ts'
+import {
+  inlineStyles,
+  measureCss,
+  type RouteStylesheets,
+  rangeMediaQueries,
+  rangeQueryFailures,
+  routeCount,
+} from './bundle-css.ts'
 
 const MAIN = Math.round(15.5 * 1024)
 const SHEETS = [
@@ -77,5 +84,44 @@ describe('routeCount', () => {
     [3, '3 rotte'],
   ])('%i → %s', (count, label) => {
     expect(routeCount(count)).toBe(label)
+  })
+})
+
+describe('rangeMediaQueries', () => {
+  it.each(['(width>=40rem)', 'not all and (width>=96rem)', '(40rem<=width<=60rem)', '(width<40rem)'])(
+    'trova %s',
+    (query) => {
+      expect(rangeMediaQueries(`@media ${query}{a{color:red}}`)).toEqual([query])
+    },
+  )
+
+  it.each(['(min-width:40rem)', '(prefers-reduced-motion)', '(hover:hover)'])('lascia passare %s', (query) => {
+    expect(rangeMediaQueries(`@media ${query}{a{color:red}}`)).toEqual([])
+  })
+
+  it('dice una volta la query ripetuta, e salta i commenti e le query di @container', () => {
+    const css =
+      '/* @media (width>=1px) */@media (width>=40rem){a{b:c}}@media (width>=40rem){d{e:f}}@container (width>=40rem){g{h:i}}'
+
+    expect(rangeMediaQueries(css)).toEqual(['(width>=40rem)'])
+  })
+})
+
+describe('inlineStyles', () => {
+  it('raccoglie il CSS di ogni <style> della pagina, anche con attributi', () => {
+    expect(inlineStyles('<style>a{b:c}</style><p>testo</p><style media="print">d{e:f}</style>')).toBe('a{b:c}\nd{e:f}')
+  })
+})
+
+describe('rangeQueryFailures', () => {
+  it('nomina il file e le sue query, e tace sui fogli che non ne hanno', () => {
+    const failures = rangeQueryFailures([
+      { file: 'dist/client/_astro/main.css', css: '@media (width>=40rem){a{b:c}}@media (width<64rem){d{e:f}}' },
+      { file: 'dist/client/index.html', css: '@media (min-width:40rem){a{b:c}}' },
+    ])
+
+    expect(failures).toEqual([
+      'dist/client/_astro/main.css: media query in sintassi di intervallo, che Safari legge solo dalla 16.4 — (width>=40rem), (width<64rem); si abbassano con `vite.build.cssTarget`',
+    ])
   })
 })
