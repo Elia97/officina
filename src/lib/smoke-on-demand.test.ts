@@ -57,16 +57,16 @@ describe('checkOnDemandPages: il meta della CSP', () => {
       page(`<meta http-equiv="Content-Security-Policy" content="script-src-elem 'self'">`),
     ],
     ['con script-src in un meta che non è la CSP', page('<meta name="description" content="script-src">')],
-  ])('un 200 HTML %s è un avviso', async (_, body) => {
+  ])('un 200 HTML %s è un fallimento', async (_, body) => {
     const detail = 'manca il meta Content-Security-Policy con script-src'
 
-    expect(await run(answer({ headers: HTML, body }))).toEqual([{ check: CHECK, status: 'warn', detail }])
+    expect(await run(answer({ headers: HTML, body }))).toEqual([{ check: CHECK, status: 'fail', detail }])
   })
 
   it('una risposta senza un corpo da leggere non porta il meta', async () => {
     const bare: SmokeResponse = { ok: true, status: 200, headers: { get: () => 'text/html' } }
 
-    expect(await run(() => Promise.resolve(bare))).toMatchObject([{ status: 'warn' }])
+    expect(await run(() => Promise.resolve(bare))).toMatchObject([{ status: 'fail' }])
   })
 })
 
@@ -96,15 +96,15 @@ describe('checkOnDemandPages: stati e redirect', () => {
       'atteso un content-type text/html, ricevuto "application/json"',
     ],
     ['un 200 senza content-type', {}, 'atteso un content-type text/html, ricevuto ""'],
-  ])('%s è un avviso', async (_, init: ResponseInit, detail) => {
-    expect(await run(answer(init))).toEqual([{ check: CHECK, status: 'warn', detail }])
+  ])('%s è un fallimento', async (_, init: ResponseInit, detail) => {
+    expect(await run(answer(init))).toEqual([{ check: CHECK, status: 'fail', detail }])
   })
 
   it.each([
     ['un Error', new Error('ECONNRESET'), 'ECONNRESET'],
     ['un valore qualunque', 'timeout', 'timeout'],
-  ])('un errore di rete, %s, è un avviso', async (_, error, detail) => {
-    expect(await run(() => Promise.reject(error))).toEqual([{ check: CHECK, status: 'warn', detail }])
+  ])('un errore di rete, %s, è un fallimento', async (_, error, detail) => {
+    expect(await run(() => Promise.reject(error))).toEqual([{ check: CHECK, status: 'fail', detail }])
   })
 })
 

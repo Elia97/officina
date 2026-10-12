@@ -80,9 +80,6 @@ function secretGaps(source: string | undefined, keys: readonly string[]): Contra
   })
 }
 
-// TODO: dalla 0.14.0 i requisiti del database e dell'autenticazione sono errori di doctor: togli `severity`.
-const asWarning = (gap: ContractGap): ContractGap => ({ ...gap, severity: 'warning' })
-
 export function databaseAuthGaps(
   files: ProjectFiles,
   manifest: Manifest,
@@ -93,5 +90,5 @@ export function databaseAuthGaps(
     files.read(ASTRO_CONFIG),
     on.map((name) => DEPENDENCY_FEATURES[name].secret),
   )
-  return [...database, ...secrets].map(asWarning)
+  return [...database, ...secrets]
 }

@@ -86,9 +86,6 @@ export async function main(args: string[] = []): Promise<number> {
     printFailures(failures, isOn(config, readManifest({ read: projectFile }), 'database'))
     return 1
   }
-  const warnings = results.filter(({ status }) => status === 'warn').length
-  // TODO: dalla 0.14.0 le anomalie a richiesta sono `fail` (smoke-on-demand.ts): togli il log degli avvisi qui sotto.
-  if (warnings > 0) console.log(`\n· ${warnings} avviso/i: dalla 0.14.0 fanno fallire lo smoke.`)
   console.log(`\n✓ Tutti i controlli passati su ${baseUrl}.\n`)
   return 0
 }

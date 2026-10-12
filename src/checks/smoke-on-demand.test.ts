@@ -42,7 +42,7 @@ const edgeWithoutCsp = (asked: string[]) => async (url: string) => {
 }
 
 describe('check smoke e una pagina resa a richiesta', () => {
-  it('la visita, e senza la CSP la segnala con un avviso che non fa fallire lo smoke', async () => {
+  it('la visita, e senza la CSP fa fallire lo smoke', async () => {
     const root = mkdtempSync(join(tmpdir(), 'officina-smoke-richiesta-'))
     roots.push(root)
     for (const [name, source] of Object.entries(FILES)) {
@@ -52,13 +52,12 @@ describe('check smoke e una pagina resa a richiesta', () => {
     process.chdir(root)
     const asked: string[] = []
     vi.stubGlobal('fetch', edgeWithoutCsp(asked))
-    const lines: string[] = []
-    vi.spyOn(console, 'log').mockImplementation((line: string) => void lines.push(line))
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const errors: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation((line: string) => void errors.push(line))
 
-    expect(await checkSmoke()).toBe(0)
-    expect(lines).toContain('· GET /accedi (a richiesta) — manca il meta Content-Security-Policy con script-src')
-    expect(lines).toContain('\n· 1 avviso/i: dalla 0.14.0 fanno fallire lo smoke.')
+    expect(await checkSmoke()).toBe(1)
+    expect(errors).toContain('✗ GET /accedi (a richiesta) — manca il meta Content-Security-Policy con script-src')
     expect(asked).toContain(`${SITE}/chi-siamo/`)
     expect(asked).not.toContain(`${SITE}/accedi/`)
   })
