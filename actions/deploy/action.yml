@@ -1,5 +1,5 @@
 name: officina deploy
-description: La produzione esce da un tag di release — gate, build di Vercel, deploy e smoke sull'apice.
+description: La produzione esce da un tag di release — gate, build di Vercel, deploy e smoke della produzione.
 
 # [HARD] I segreti entrano come input e finiscono nell'`env` dei soli passi che li usano.
 # Nell'`env` del job li vedrebbero anche `pnpm install` e gli script di installazione di ogni

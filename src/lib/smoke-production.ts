@@ -1,5 +1,6 @@
 import type { VerifiedRoute } from './routes.ts'
 import { checkOnDemandPages, type OnDemandPage } from './smoke-on-demand.ts'
+import { checkRobotsTag } from './smoke-robots.ts'
 
 export interface SmokeResponse {
   ok: boolean
@@ -102,7 +103,8 @@ export async function checkPages(
   return results
 }
 
-export async function checkSecurityHeaders({ get, baseUrl, securityHeaders }: SmokeContext): Promise<CheckResult[]> {
+export async function checkSecurityHeaders(context: SmokeContext): Promise<CheckResult[]> {
+  const { get, baseUrl, securityHeaders } = context
   let landing: { url: string; response: SmokeResponse }
   try {
     landing = await landingPage(get, baseUrl)
@@ -120,10 +122,7 @@ export async function checkSecurityHeaders({ get, baseUrl, securityHeaders }: Sm
     return pass(check)
   })
 
-  // Il noindex `has: host = *.vercel.app` di vercel.json applicato al dominio vero farebbe sparire il sito da ogni indice.
-  const check = 'nessun x-robots-tag sull’host di produzione'
-  const robots = response.headers.get('x-robots-tag')
-  results.push(robots === null ? pass(check) : fail(check, `presente su ${url}: "${robots}"`))
+  results.push(checkRobotsTag(context, url, response.headers.get('x-robots-tag')))
   return results
 }
 

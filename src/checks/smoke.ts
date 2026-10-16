@@ -6,7 +6,7 @@ import process from 'node:process'
 
 import { readManifest } from '../lib/alignment.ts'
 import { missingInput } from '../lib/cli.ts'
-import { isOn, isRequired, loadConfig } from '../lib/config.ts'
+import { isOn, isRequired, loadConfig, type OfficinaConfig } from '../lib/config.ts'
 import { type Expectations, expectedRoutes, readPageFiles, smokeRoutes } from '../lib/routes.ts'
 import { onDemandPages } from '../lib/smoke-on-demand.ts'
 import {
@@ -30,6 +30,11 @@ function printResults(results: readonly CheckResult[]): void {
   }
 }
 
+const declaredNote = (argument: string | undefined, { siteUrl, smoke }: OfficinaConfig): string =>
+  argument === undefined && smoke?.url !== undefined
+    ? `\nda smoke.url, al posto di ${siteUrl}: con il dominio la voce esce`
+    : ''
+
 const disabledResults = ({ disabled }: Expectations): CheckResult[] =>
   disabled.map(({ label }) => ({ check: `pagina ${label}`, status: 'skip', detail: 'spenta da `routes.disabled`' }))
 
@@ -47,7 +52,8 @@ function printFailures(failures: readonly CheckResult[], database: boolean): voi
 export async function main(args: string[] = []): Promise<number> {
   const config = await loadConfig(process.cwd())
   const { siteUrl, smoke = {}, routes = {} } = config
-  const [url] = args
+  const [argument] = args
+  const url = argument ?? smoke.url
 
   if (siteUrl === undefined) {
     console.error(
@@ -60,7 +66,6 @@ export async function main(args: string[] = []): Promise<number> {
     return 1
   }
 
-  // L'apice, non l'URL *.vercel.app che stampa `vercel deploy`: lì la regola `has: host` di vercel.json mette noindex.
   const baseUrl = (url ?? siteUrl).replace(/\/+$/, '')
   const context: SmokeContext = {
     get: (target) => fetch(target, { redirect: 'manual' }),
@@ -74,7 +79,7 @@ export async function main(args: string[] = []): Promise<number> {
   const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR, routes.disabled)
   const pages = smokeRoutes(expected, smoke.nonHtmlRoutes, routes.representatives)
 
-  console.log(`\nSmoke di produzione — ${baseUrl}\n`)
+  console.log(`\nSmoke di produzione — ${baseUrl}${declaredNote(argument, config)}\n`)
 
   await waitForAlias(context, (ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   const onDemand = onDemandPages(expected, PAGES_DIR, routes.representatives)

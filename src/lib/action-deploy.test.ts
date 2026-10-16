@@ -93,6 +93,12 @@ const BIN = fakePnpm()
 
 afterAll(() => rmSync(BIN, { recursive: true, force: true }))
 
+describe('il deploy e lo smoke', () => {
+  it("lancia lo smoke senza indirizzo: lo sceglie la configurazione, `smoke.url` prima dell'apice", () => {
+    expect(named('Smoke di produzione')).toMatchObject({ shell: 'bash', run: 'pnpm run smoke:prod' })
+  })
+})
+
 describe('il deploy e le migrazioni', () => {
   it('le applica dopo i controlli di `vercel pull`, subito prima della build, solo quando il progetto dichiara `migrate`', () => {
     const order = [

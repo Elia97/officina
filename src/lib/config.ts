@@ -11,6 +11,7 @@ import {
   aNumber,
   anArrayOf,
   anEnvName,
+  anHttpOrigin,
   aRecordOf,
   aShape,
   aString,
@@ -25,11 +26,13 @@ export type FeatureSetting = 'required' | false
 export type GeneratorsSetting = FeatureSetting | 'project'
 
 export interface OfficinaConfig {
-  /** L'apice di produzione, senza barra finale: lo usa `check smoke` quando non riceve un URL. */
+  /** L'apice di produzione, senza barra finale: lo usa `check smoke` quando non riceve un URL e `smoke.url` manca. */
   siteUrl?: string
   icons?: { background: string }
   bundle?: { budgets?: readonly Budget[]; cssMaxGzip?: number }
   smoke?: {
+    /** Origine Vercel della produzione, come `https://<progetto>.vercel.app`: lo smoke senza URL prova questa. */
+    url?: string
     securityHeaders?: Record<string, string | null>
     nonHtmlRoutes?: readonly VerifiedRoute[]
     checks?: readonly SmokeCheck[]
@@ -109,6 +112,7 @@ const SHAPE = aShape({
   icons: aShape({ background: aString }),
   bundle: aShape({ budgets: anArrayOf(budget), cssMaxGzip: aNumber }),
   smoke: aShape({
+    url: anHttpOrigin,
     securityHeaders: aRecordOf(aStringOrNull),
     nonHtmlRoutes: anArrayOf(verifiedRoute),
     checks: anArrayOf(aFunction),
