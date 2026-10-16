@@ -40,6 +40,15 @@ export const anEnvName: Check = (value, path) => {
   return [`${path}: atteso il nome di una variabile d'ambiente, ricevuto ${JSON.stringify(value)}`]
 }
 
+const HTTP = new Set(['http:', 'https:'])
+
+export const anHttpOrigin: Check = (value, path) => {
+  if (typeof value !== 'string') return [problem(path, 'una stringa', value)]
+  const url = URL.parse(value)
+  if (url !== null && HTTP.has(url.protocol) && url.href === `${url.origin}/`) return []
+  return [`${path}: atteso un'origine http o https, senza percorso né query, ricevuto ${JSON.stringify(value)}`]
+}
+
 export const anArrayOf =
   (item: Check): Check =>
   (value, path) =>

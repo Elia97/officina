@@ -5,6 +5,7 @@ import {
   aNumber,
   anArrayOf,
   anEnvName,
+  anHttpOrigin,
   aRecordOf,
   aShape,
   aString,
@@ -67,6 +68,28 @@ describe('i controlli semplici', () => {
     expect(feature('no', 'features.roadmap')).toEqual([
       "features.roadmap: atteso 'required' oppure false, ricevuto una stringa",
     ])
+  })
+})
+
+describe("il controllo di un'origine, dove il valore è l'indirizzo da visitare", () => {
+  it.each(['https://prova.vercel.app', 'https://prova.vercel.app/', 'http://localhost:4321'])('accetta %s', (value) => {
+    expect(anHttpOrigin(value, 'smoke.url')).toEqual([])
+  })
+
+  it.each([
+    'prova.vercel.app',
+    'ftp://prova.test',
+    'https://prova.vercel.app/it',
+    'https://prova.vercel.app/?anteprima=1',
+    'https://utente:segreto@prova.vercel.app',
+  ])('rifiuta %s: ogni pagina finirebbe sotto un indirizzo sbagliato', (value) => {
+    expect(anHttpOrigin(value, 'smoke.url')).toEqual([
+      `smoke.url: atteso un'origine http o https, senza percorso né query, ricevuto ${JSON.stringify(value)}`,
+    ])
+  })
+
+  it("vuole una stringa prima ancora di un'origine", () => {
+    expect(anHttpOrigin(1, 'smoke.url')).toEqual(['smoke.url: atteso una stringa, ricevuto un numero'])
   })
 })
 

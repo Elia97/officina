@@ -147,6 +147,17 @@ describe('features.links', () => {
   })
 })
 
+describe('smoke.url', () => {
+  it("si legge come un'origine, e un indirizzo con un percorso si rifiuta nominando la voce", async () => {
+    expect(await loadConfig(config("{ smoke: { url: 'https://prova.vercel.app' } }"))).toEqual({
+      smoke: { url: 'https://prova.vercel.app' },
+    })
+    await expect(loadConfig(config("{ smoke: { url: 'https://prova.vercel.app/it' } }"))).rejects.toThrow(
+      `smoke.url: atteso un'origine http o https, senza percorso né query, ricevuto "https://prova.vercel.app/it"`,
+    )
+  })
+})
+
 describe('routes.disabled', () => {
   it('si legge come una lista di pattern', async () => {
     expect(await loadConfig(config("{ routes: { disabled: ['/news/[slug]'] } }"))).toEqual({
