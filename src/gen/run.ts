@@ -5,7 +5,13 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { missingInput } from '../lib/cli.ts'
-import { generatorsSetting, loadConfig } from '../lib/config.ts'
+import {
+  type GeneratorsSetting,
+  generatorsSetting,
+  type ImageSource,
+  imagesSetting,
+  loadConfig,
+} from '../lib/config.ts'
 import { PROJECT_GENERATORS } from './plopfile.mjs'
 
 // plop risolve i template dalla cartella del plopfile e scrive in `--dest`: il plopfile sta nel
@@ -17,8 +23,19 @@ export function plopCommand(args: string[], cwd: string): string[] {
   return [plopBin, '--plopfile', plopfile, '--dest', cwd, ...args]
 }
 
+export const plopEnv = (
+  generators: GeneratorsSetting,
+  images: ImageSource,
+  base: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv => ({
+  ...base,
+  OFFICINA_IMAGES: images,
+  ...(generators === 'project' ? { OFFICINA_GENERATORS: 'project' } : {}),
+})
+
 export async function main(args: string[] = []): Promise<number> {
-  const setting = generatorsSetting(await loadConfig(process.cwd()))
+  const config = await loadConfig(process.cwd())
+  const setting = generatorsSetting(config)
   if (setting === false) {
     console.error(
       '\n✗ Il progetto ha spento i generatori con `features.generators: false`: quelli del pacchetto\n' +
@@ -29,7 +46,7 @@ export async function main(args: string[] = []): Promise<number> {
   if (setting === 'project' && missingInput(PROJECT_GENERATORS, "con `generators: 'project'` i generatori sono i suoi"))
     return 1
 
-  const env = setting === 'project' ? { ...process.env, OFFICINA_GENERATORS: 'project' } : process.env
+  const env = plopEnv(setting, imagesSetting(config))
   const result = spawnSync(process.execPath, plopCommand(args, process.cwd()), { stdio: 'inherit', env })
   return result.status ?? 1
 }

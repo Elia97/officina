@@ -18,8 +18,8 @@ import {
   featuresOffByChoice,
   featuresOn,
   findConfigFile,
-  type GeneratorsSetting,
   generatorsSetting,
+  imagesSetting,
   loadConfig,
   type OfficinaConfig,
 } from '../lib/config.ts'
@@ -59,10 +59,11 @@ const ANCHORS = 'ancoraggi delle pagine a sezioni e dei dizionari'
 const usable = (config: OfficinaConfig | Error | undefined): OfficinaConfig =>
   config === undefined || config instanceof Error ? {} : config
 
-function generatorSections(root: string, setting: GeneratorsSetting): Section[] {
+function generatorSections(root: string, config: OfficinaConfig): Section[] {
+  const setting = generatorsSetting(config)
   if (setting === 'required') {
     return [
-      { title: HOOK_POINTS, gaps: contractGaps(root) },
+      { title: HOOK_POINTS, gaps: contractGaps(root, imagesSetting(config)) },
       { title: ANCHORS, gaps: anchorGaps(root) },
     ]
   }
@@ -117,7 +118,7 @@ export async function main(): Promise<number> {
   const config = await loadedConfig(root)
 
   const sections: Section[] = [
-    ...generatorSections(root, generatorsSetting(usable(config))),
+    ...generatorSections(root, usable(config)),
     {
       title: 'script, dipendenze e strumenti di package.json',
       gaps: [...scriptGaps(manifest), ...dependencyGaps(manifest), ...toolingGaps(manifest)],

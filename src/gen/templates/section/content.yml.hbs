@@ -2,9 +2,14 @@ section: {{camelCase section}}
 title: Titolo della sezione
 body: >-
   Contenuto placeholder della sezione. Sostituiscilo col copy reale del progetto.
-{{#if image}}
+{{#if localImage}}
 image:
   src: ../../assets/placeholder.jpg
+  alt: Descrizione dell'immagine
+{{/if}}
+{{#if cloudinaryImage}}
+image:
+  public_id: '<PUBLIC_ID>'
   alt: Descrizione dell'immagine
 {{/if}}
 buttons: []

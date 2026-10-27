@@ -1,11 +1,14 @@
 ---
-{{#if image}}
+{{#if localImage}}
 import { Image } from 'astro:assets'
 
 {{/if}}
 import Button from '@/components/ui/button.astro'
 import Container from '@/components/ui/container.astro'
 import Heading from '@/components/ui/heading.astro'
+{{#if cloudinaryImage}}
+import Photo from '@/components/ui/photo.astro'
+{{/if}}
 import Section from '@/components/ui/section.astro'
 import type { {{pascalCase collection}}Sections } from '@/lib/{{dashCase collection}}'
 
@@ -21,9 +24,18 @@ const href = (url: string) => ctaHref(Astro.currentLocale, url)
   <Container>
     <Heading as="h2">{title}</Heading>
     {body && <p class="mt-4 max-w-2xl text-pretty text-muted-foreground">{body}</p>}
-    {{#if image}}
+    {{#if localImage}}
     <Image
       src={image.src}
+      alt={image.alt}
+      widths={[640, 960, 1280, 1920]}
+      sizes="(min-width: 96rem) 96rem, 100vw"
+      class="mt-8 h-auto w-full rounded-lg"
+    />
+    {{/if}}
+    {{#if cloudinaryImage}}
+    <Photo
+      publicId={image.public_id}
       alt={image.alt}
       widths={[640, 960, 1280, 1920]}
       sizes="(min-width: 96rem) 96rem, 100vw"

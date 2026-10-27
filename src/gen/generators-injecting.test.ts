@@ -111,7 +111,7 @@ describe('gen:section template data', () => {
     const answers = { collection: 'homepage', name: 'features', image: false }
 
     for (const action of addActions(actionsFor(config, answers))) {
-      expect(action.data).toEqual({ section: 'features' })
+      expect(action.data).toEqual({ section: 'features', localImage: false, cloudinaryImage: false })
       expect(Object.keys(action.data ?? {}).filter((key) => key in answers)).toEqual([])
     }
   })

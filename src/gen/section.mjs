@@ -1,7 +1,13 @@
 import { isValidIdentifier } from './identifier.mjs'
+import { imageData, imageSource } from './images.mjs'
 import { assertSectionInjectable, injectSection } from './inject-section.mjs'
 import { postGenAction } from './post-gen.mjs'
 import { casings, sectionFiles, sectionTargets, validateSectionName } from './section-targets.mjs'
+
+const IMAGE_START = {
+  local: 'src/assets/placeholder.jpg',
+  cloudinary: "public_id '<PUBLIC_ID>'",
+}
 
 function rollbackHint(targets) {
   return (
@@ -41,7 +47,7 @@ export default function sectionGenerator(plop) {
       {
         type: 'confirm',
         name: 'image',
-        message: 'Does the section carry an image? (its content starts on src/assets/placeholder.jpg)',
+        message: `Does the section carry an image? (its content starts on ${IMAGE_START[imageSource()]})`,
         default: false,
       },
     ],
@@ -49,9 +55,10 @@ export default function sectionGenerator(plop) {
       const collection = casings(plop, answers.collection)
       const section = casings(plop, answers.name)
       const targets = sectionTargets(collection)
-      const request = { root, collection, ...section, image: answers.image === true }
+      const images = imageData(answers)
+      const request = { root, collection, ...section, image: images.localImage }
       const [schema, content, component] = sectionFiles(targets, section.kebab)
-      const data = { section: answers.name }
+      const data = { section: answers.name, ...images }
       return [
         () => {
           assertSectionInjectable(request)
