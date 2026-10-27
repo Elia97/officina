@@ -11,7 +11,7 @@ detect_chrome() {
   local candidate
   for candidate in \
     "${CHROME_PATH:-}" \
-    $(ls -d "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V -r) \
+    $(ls -d "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux*/chrome 2>/dev/null | sort -V -r) \
     $(ls -d "$HOME"/.cache/puppeteer/chrome/*/chrome-linux*/chrome 2>/dev/null | sort -V -r) \
     /usr/bin/google-chrome /usr/bin/chromium /usr/bin/chromium-browser
   do
@@ -30,19 +30,28 @@ if ! CHROME_PATH="$(detect_chrome)"; then
   echo "  Oppure indica il binario: CHROME_PATH=/percorso/di/chrome pnpm run lhci:local" >&2
   exit 1
 fi
-export CHROME_PATH
 echo "✓ chrome: ${CHROME_PATH} ($("${CHROME_PATH}" --version 2>/dev/null))"
 
 SERVER_PID=''
+PROFILE_ROOT=''
 
 cleanup() {
   if [[ -n "${SERVER_PID}" ]]; then
     kill -- "-${SERVER_PID}" 2>/dev/null || kill "${SERVER_PID}" 2>/dev/null || true
     pkill -f "serve@14.2.6 .*--listen ${PORT}" 2>/dev/null || true
   fi
-  find . -maxdepth 1 \( -name '*wsl.localhost*' -o -name 'undefined*' \) -exec rm -rf {} + 2>/dev/null || true
+  if [[ -n "${PROFILE_ROOT}" ]]; then rm -rf "${PROFILE_ROOT}"; fi
 }
 trap cleanup EXIT
+
+# Sotto WSL chrome-launcher passa `--user-data-dir=C:\Users\…` (wslpath -w): un Chrome per Linux lo crea come percorso relativo.
+if [[ "$(uname -r)" == *[Mm]icrosoft* ]]; then
+  PROFILE_ROOT="$(mktemp -d "${TMPDIR}/officina-lhci.XXXXXX")"
+  printf '#!/usr/bin/env bash\ncd %q && exec %q "$@"\n' "${PROFILE_ROOT}" "${CHROME_PATH}" >"${PROFILE_ROOT}/chrome"
+  chmod +x "${PROFILE_ROOT}/chrome"
+  CHROME_PATH="${PROFILE_ROOT}/chrome"
+fi
+export CHROME_PATH
 
 echo "→ build equivalente alla produzione in ${OUT_DIR}"
 VERCEL_ENV=production pnpm build --outDir "${OUT_DIR}"
