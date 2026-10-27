@@ -36,6 +36,16 @@
       "semicolons": "asNeeded"
     }
   },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
   "assist": {
     "enabled": true,
     "actions": {

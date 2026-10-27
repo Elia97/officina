@@ -36,12 +36,7 @@
         "noExcessiveLinesPerFunction": "error"
       },
       "nursery": {
-        "useSortedClasses": {
-          "level": "error",
-          "options": {
-            "functions": ["cn", "cva"]
-          }
-        }
+        "useTailwindSortedClasses": "error"
       }
     }
   },
@@ -54,6 +49,16 @@
   "css": {
     "parser": {
       "tailwindDirectives": true
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
     }
   },
   "assist": {
