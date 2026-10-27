@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { contentFindings } from '../lib/check-placeholders.ts'
 import collectionGenerator from './collection.mjs'
 import sectionGenerator from './section.mjs'
 import {
@@ -126,5 +127,30 @@ describe('gen:collection a sezioni, con la prima sezione che ha una foto', () =>
 
     expect(files['src/lib/schemas/about/index.ts']).toContain('introSectionSchema(context)')
     expect(files['src/lib/schemas/about/intro.ts']).toContain('image: imageSchema(image),')
+  })
+})
+
+describe('il contenuto di una sezione appena generata', () => {
+  const messages = (files: Record<string, string>) =>
+    contentFindings(files['src/content/homepage/gallery.yml'] ?? '').map(({ message }) => message)
+
+  it('con Cloudinary ferma check placeholders su titolo, testo, public_id e alt', () => {
+    vi.stubEnv('OFFICINA_IMAGES', 'cloudinary')
+
+    expect(messages(generate(sectionGenerator, 'section', gallery))).toEqual([
+      'segnaposto del template <SECTION_TITLE>',
+      'segnaposto del template <SECTION_BODY>',
+      'segnaposto del template <PUBLIC_ID>',
+      'segnaposto del template <IMAGE_ALT>',
+    ])
+  })
+
+  it('con le foto locali lo ferma anche sulla foto di prova', () => {
+    expect(messages(generate(sectionGenerator, 'section', gallery))).toEqual([
+      'segnaposto del template <SECTION_TITLE>',
+      'segnaposto del template <SECTION_BODY>',
+      'foto di prova assets/placeholder.jpg',
+      'segnaposto del template <IMAGE_ALT>',
+    ])
   })
 })

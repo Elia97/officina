@@ -7,6 +7,8 @@ import { type Finding, type Hit, readLines } from './cli.ts'
 import { DEPENDENCY_FEATURES, featuresOn, type OfficinaConfig } from './config.ts'
 
 const DICTIONARIES = 'src/i18n/strings'
+const CONTENT = 'src/content/'
+const CONTENT_EXTENSIONS: readonly string[] = ['.yml', '.yaml', '.json', '.md', '.mdx', '.mdoc']
 const DEFAULT_SOURCES: readonly string[] = ['src/lib/site.ts', 'src/lib/company.ts']
 const CONTACT_ENV_KEYS: readonly string[] = ['CONTACT_FROM_EMAIL', 'CONTACT_FROM_NAME', 'CONTACT_TO_EMAIL']
 
@@ -16,6 +18,7 @@ const STRING_LITERAL = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g
 const COMMENT_ONLY = /^\s*(?:\/\/|\/\*|\*)/
 const ZERO_POSTAL_CODE = /\bpostalCode:\s*(['"])00000\1/
 const EMPTY_HREF = /\bhref:\s*(['"])#\1/
+const PLACEHOLDER_IMAGE = /\bassets\/placeholder\.jpg\b/
 
 type EnvHit = Omit<Finding, 'path'>
 
@@ -32,11 +35,26 @@ const dictionaries = (): string[] =>
         .map((name) => join(DICTIONARIES, name))
     : []
 
+const filesUnder = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return filesUnder(path)
+    return entry.isFile() ? [path] : []
+  })
+
+const contentFiles = (): string[] =>
+  existsSync(CONTENT)
+    ? filesUnder(CONTENT)
+        .filter((path) => CONTENT_EXTENSIONS.some((extension) => path.endsWith(extension)))
+        .sort()
+    : []
+
 export function placeholderSources(config: OfficinaConfig = {}): string[] {
-  const declared = config.placeholders?.sources
-  if (declared !== undefined) return [...declared]
-  return [...DEFAULT_SOURCES, ...dictionaries()]
+  const declared = config.placeholders?.sources ?? [...DEFAULT_SOURCES, ...dictionaries()]
+  return [...new Set([...declared, ...contentFiles()])]
 }
+
+export const isContent = (path: string): boolean => path.startsWith(CONTENT)
 
 export const contactEnvKeys = (config: OfficinaConfig = {}): readonly string[] =>
   config.placeholders?.contactEnvKeys ?? CONTACT_ENV_KEYS
@@ -56,13 +74,25 @@ function literalFindings(value: string): string[] {
   return messages
 }
 
+function lineMessages(text: string): string[] {
+  const messages = [...text.matchAll(STRING_LITERAL)].flatMap((match) => literalFindings(match[0].slice(1, -1)))
+  if (ZERO_POSTAL_CODE.test(text)) messages.push('CAP segnaposto 00000')
+  if (EMPTY_HREF.test(text)) messages.push("profilo senza indirizzo: href: '#'")
+  return messages
+}
+
 export function sourceFindings(source: string): Hit[] {
+  return readLines(source).flatMap(({ n, text }) =>
+    COMMENT_ONLY.test(text) ? [] : lineMessages(text).map((message) => ({ line: n, message })),
+  )
+}
+
+// YAML e Markdown scrivono i valori senza apici, e in Markdown una riga che comincia con `*` è una voce d'elenco.
+export function contentFindings(source: string): Hit[] {
   return readLines(source).flatMap(({ n, text }) => {
-    if (COMMENT_ONLY.test(text)) return []
-    const messages = [...text.matchAll(STRING_LITERAL)].flatMap((match) => literalFindings(match[0].slice(1, -1)))
-    if (ZERO_POSTAL_CODE.test(text)) messages.push('CAP segnaposto 00000')
-    if (EMPTY_HREF.test(text)) messages.push("profilo senza indirizzo: href: '#'")
-    return messages.map((message) => ({ line: n, message }))
+    const messages = new Set([...lineMessages(text), ...literalFindings(text)])
+    if (PLACEHOLDER_IMAGE.test(text)) messages.add('foto di prova assets/placeholder.jpg')
+    return [...messages].map((message) => ({ line: n, message }))
   })
 }
 
@@ -89,13 +119,6 @@ export function envFindings(content: string, keys: readonly string[]): EnvHit[] 
     return []
   })
 }
-
-const filesUnder = (dir: string): string[] =>
-  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) return filesUnder(path)
-    return entry.isFile() ? [path] : []
-  })
 
 export const outputFindings = (dir: string): Finding[] =>
   filesUnder(dir)
