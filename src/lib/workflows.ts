@@ -77,14 +77,44 @@ function parsed(source: string): { workflow: unknown } | { error: string } {
   }
 }
 
-function stepsUsing(source: string, action: string): Record<string, unknown>[] | string {
+function jobsOf(source: string): [string, Record<string, unknown>][] | string {
   const result = parsed(source)
   if ('error' in result) return result.error
   const { workflow } = result
-  const jobs = isRecord(workflow) && isRecord(workflow.jobs) ? Object.values(workflow.jobs) : []
+  if (!isRecord(workflow) || !isRecord(workflow.jobs)) return []
+  return Object.entries(workflow.jobs).filter((entry): entry is [string, Record<string, unknown>] => isRecord(entry[1]))
+}
+
+const stepsOf = (job: Record<string, unknown>): unknown[] => (Array.isArray(job.steps) ? job.steps : [])
+
+const usesAction = (step: unknown, action: string): step is Record<string, unknown> =>
+  isRecord(step) && String(step.uses).startsWith(`${actionName(action)}@`)
+
+function stepsUsing(source: string, action: string): Record<string, unknown>[] | string {
+  const jobs = jobsOf(source)
+  if (typeof jobs === 'string') return jobs
+  return jobs.flatMap(([, job]) => stepsOf(job)).filter((step) => usesAction(step, action))
+}
+
+const CI_WORKFLOW = '.github/workflows/ci.yml'
+
+const hasTimeout = (job: Record<string, unknown>): boolean =>
+  job['timeout-minutes'] !== undefined && job['timeout-minutes'] !== null
+
+/** Il passo di una composite action non accetta `timeout-minutes`: il tetto sta sul job che la chiama. */
+export function ciTimeoutGaps({ read }: ProjectFiles): ContractGap[] {
+  const source = read(CI_WORKFLOW)
+  const jobs = source === undefined ? [] : jobsOf(source)
+  if (typeof jobs === 'string') return []
   return jobs
-    .flatMap((job) => (isRecord(job) && Array.isArray(job.steps) ? job.steps : []))
-    .filter((step) => isRecord(step) && String(step.uses).startsWith(`${actionName(action)}@`))
+    .filter(([, job]) => stepsOf(job).some((step) => usesAction(step, 'ci')) && !hasTimeout(job))
+    .map(
+      ([name]): ContractGap => ({
+        path: CI_WORKFLOW,
+        severity: 'warning',
+        message: `il job \`${name}\` usa \`${actionName('ci')}\` senza \`timeout-minutes\`: con un mirror di apt fermo la corsa resta aperta fino al tetto di GitHub, 6 ore`,
+      }),
+    )
 }
 
 const inputValue = (step: Record<string, unknown>, input: string): unknown =>

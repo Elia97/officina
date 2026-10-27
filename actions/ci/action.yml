@@ -123,6 +123,14 @@ runs:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
+    # Playwright installa le dipendenze con `sudo apt-get`, che non passa l'ambiente: i tempi vanno in un file.
+    - name: Tempi massimi di apt per le dipendenze di Playwright
+      if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
+      shell: bash
+      run: |
+        printf '%s\n' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'Acquire::Retries "5";' \
+          | sudo tee /etc/apt/apt.conf.d/99officina-timeouts >/dev/null
+
     # Solo chromium: gli scenari provano il codice del progetto, non le differenze fra motori.
     - if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
       run: pnpm exec playwright install --with-deps chromium
