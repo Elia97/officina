@@ -55,7 +55,7 @@
     "test:pack": "bash scripts/pack-test.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.3",
     "@types/node": "^26.5.1",
     "@vitest/coverage-v8": "^4.1.11",
     "fallow": "^3.26.0",
@@ -68,7 +68,7 @@
     "yaml": "^2.9.1"
   },
   "peerDependencies": {
-    "@biomejs/biome": ">=2.5.10 <3.0.0",
+    "@biomejs/biome": ">=2.6.0 <3.0.0",
     "sharp": ">=0.34.0"
   },
   "peerDependenciesMeta": {

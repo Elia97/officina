@@ -15,7 +15,7 @@ const REQUIRED: readonly { name: string; reason: string }[] = [
 const BIOME = '@biomejs/biome'
 const MANIFEST = 'package.json'
 
-// Il preset usa una regola `nursery`, che fra una major e l'altra di Biome cambia nome o sparisce:
+// Il preset usa una regola `nursery`, che anche fra due minor di Biome cambia nome o sparisce:
 // l'intervallo che regge lo dichiara il pacchetto, in un posto solo.
 function biomeRangeGap(declared: string): string | undefined {
   const range = peerRange(BIOME)
