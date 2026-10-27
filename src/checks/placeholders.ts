@@ -5,7 +5,9 @@ import { parseArgs } from 'node:util'
 
 import { readManifest } from '../lib/alignment.ts'
 import {
+  contentFindings,
   envFindings,
+  isContent,
   outputFindings,
   placeholderSources,
   requiredEnvKeys,
@@ -19,7 +21,8 @@ const MISSING_SOURCE = 'sorgente assente: `placeholders.sources` in officina.con
 function sourceScan(paths: string[]): Finding[] {
   return paths.flatMap((path): Finding[] => {
     if (!existsSync(path)) return [{ path, message: MISSING_SOURCE, severity: 'error' }]
-    return sourceFindings(readFileSync(path, 'utf8')).map((hit): Finding => ({ path, ...hit, severity: 'error' }))
+    const findings = isContent(path) ? contentFindings : sourceFindings
+    return findings(readFileSync(path, 'utf8')).map((hit): Finding => ({ path, ...hit, severity: 'error' }))
   })
 }
 
@@ -72,12 +75,13 @@ function scan(env: string | undefined, output: string | undefined, config: Offic
     }
   }
   const paths = placeholderSources(config)
+  const content = paths.filter(isContent).length
   return {
-    scope: `${paths.length} sorgenti`,
+    scope: `${paths.length - content} sorgenti${content > 0 ? ` e ${content} file di src/content` : ''}`,
     findings: sourceScan(paths),
     clean: 'Nessun segnaposto del template.',
     advice:
-      'Da sostituire con i dati del progetto prima del deploy: i file da guardare li dice `placeholders.sources` in officina.config.ts',
+      'Da sostituire con i dati del progetto prima del deploy: i file da guardare li dice `placeholders.sources` in officina.config.ts, e il contenuto di src/content, dove i generatori scrivono i segnaposto di una sezione nuova, si guarda sempre',
   }
 }
 
