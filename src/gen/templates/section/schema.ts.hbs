@@ -1,17 +1,20 @@
-{{#if image}}
+{{#if localImage}}
 import type { SchemaContext } from 'astro:content'
 {{/if}}
 import { z } from 'astro/zod'
 
-import { ctaSchema{{#if image}}, imageSchema{{/if}} } from '../common'
+import { ctaSchema{{#if localImage}}, imageSchema{{/if}}{{#if cloudinaryImage}}, photoSchema{{/if}} } from '../common'
 
-export function {{camelCase section}}SectionSchema({{#if image}}{ image }: SchemaContext{{/if}}) {
+export function {{camelCase section}}SectionSchema({{#if localImage}}{ image }: SchemaContext{{/if}}) {
   return z.strictObject({
     section: z.literal('{{camelCase section}}'),
     title: z.string().min(1),
     body: z.string().optional(),
-    {{#if image}}
+    {{#if localImage}}
     image: imageSchema(image),
+    {{/if}}
+    {{#if cloudinaryImage}}
+    image: photoSchema,
     {{/if}}
     buttons: z.array(ctaSchema).default([]),
   })

@@ -25,6 +25,8 @@ export type FeatureSetting = 'required' | false
 
 export type GeneratorsSetting = FeatureSetting | 'project'
 
+export type ImageSource = 'local' | 'cloudinary'
+
 export interface OfficinaConfig {
   /** L'apice di produzione, senza barra finale: lo usa `check smoke` quando non riceve un URL e `smoke.url` manca. */
   siteUrl?: string
@@ -38,6 +40,7 @@ export interface OfficinaConfig {
     checks?: readonly SmokeCheck[]
   }
   analytics?: { linkTracking?: string }
+  images?: ImageSource
   /**
    * Quali controlli il progetto pretende. Una voce non dichiarata vale `'required'`, tranne `database`
    * e `auth`, che senza dichiarazione seguono le dipendenze di `package.json`.
@@ -71,6 +74,8 @@ export const isRequired = (config: OfficinaConfig, name: FeatureName): boolean =
 
 export const generatorsSetting = (config: OfficinaConfig): GeneratorsSetting =>
   config.features?.generators ?? 'required'
+
+export const imagesSetting = (config: OfficinaConfig): ImageSource => config.images ?? 'local'
 
 export const DEPENDENCY_FEATURES = {
   database: { dependency: 'drizzle-orm', secret: 'DATABASE_URL' },
@@ -106,6 +111,7 @@ const budget = aShape({ label: aString, matches: aFunction, maxGzip: aNumber })
 const verifiedRoute = aShape({ path: aString, type: aString })
 const feature = oneOf("'required' oppure false", ['required', false])
 const generators = oneOf("'required', 'project' oppure false", ['required', 'project', false])
+const images = oneOf("'local' oppure 'cloudinary'", ['local', 'cloudinary'])
 
 const SHAPE = aShape({
   siteUrl: aString,
@@ -118,6 +124,7 @@ const SHAPE = aShape({
     checks: anArrayOf(aFunction),
   }),
   analytics: aShape({ linkTracking: aString }),
+  images,
   features: aShape({
     analytics: feature,
     roadmap: feature,

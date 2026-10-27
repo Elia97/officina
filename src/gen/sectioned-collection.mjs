@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { imageData } from './images.mjs'
 import { assertInjectable, injectCollection } from './inject-config.mjs'
 import { assertStringsInjectable, injectStrings } from './inject-strings.mjs'
 import { pageStrings, pathSegments } from './page.mjs'
@@ -68,7 +69,7 @@ export function sectionedCollectionActions(plop, answers, root) {
   const pageKey = plop.getHelper('camelCase')(segments.join('/'))
   const page = `src/pages/${segments.join('/')}.astro`
   const strings = pageStrings({ pageKey, pageTitle: plop.getHelper('sentenceCase')(segments.at(-1)), dynamic: false })
-  const data = { collection: answers.name, pageKey }
+  const data = { collection: answers.name, pageKey, ...imageData(answers) }
   const [schema, content, component] = sectionFiles(targets, section.kebab)
   return [
     () => {

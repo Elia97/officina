@@ -99,6 +99,35 @@ describe('contractGaps', () => {
   })
 })
 
+describe('i punti di aggancio delle foto seguono `images`', () => {
+  const PHOTO = 'src/components/ui/photo.astro'
+  const PLACEHOLDER = 'src/assets/placeholder.jpg'
+
+  it('con le foto locali non chiede quelli di Cloudinary', () => {
+    const root = completeProject()
+    rmSync(join(root, PHOTO))
+    write(root, COMMON, 'export const ctaSchema = {}\nexport function imageSchema = {}\n')
+
+    expect(contractGaps(root, 'local')).toEqual([])
+  })
+
+  it('con le foto su Cloudinary chiede photoSchema e il componente, e non imageSchema né il segnaposto', () => {
+    const root = completeProject()
+    rmSync(join(root, PHOTO))
+    rmSync(join(root, PLACEHOLDER))
+    write(root, COMMON, 'export const ctaSchema = {}\n')
+
+    expect(contractGaps(root, 'cloudinary')).toEqual([
+      {
+        path: COMMON,
+        message:
+          "manca l'ancoraggio `export const photoSchema`: lo schema di una sezione con la foto su Cloudinary lo importa da ../common",
+      },
+      { path: PHOTO, message: 'manca: una sezione con la foto su Cloudinary la mostra con questo componente' },
+    ])
+  })
+})
+
 describe('quello che package.json deve dichiarare', () => {
   it('nomina la dipendenza che il componente generato importa', () => {
     const root = completeProject()

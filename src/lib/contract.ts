@@ -1,14 +1,17 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+import type { ImageSource } from './config.ts'
+
 // Ciò che serve perché il codice dei generatori compili: i moduli che importa, i punti in cui i
 // generatori iniettano, e le voci di package.json con cui si installa e supera il post-gen.
-type Requirement =
+type Requirement = { images?: ImageSource } & (
   | { kind: 'file'; path: string; reason: string }
   | { kind: 'directory'; path: string; extension: string; reason: string }
   | { kind: 'anchor'; path: string; text: string; reason: string }
   | { kind: 'dependency'; name: string; reason: string }
   | { kind: 'script'; name: string; reason: string }
+)
 
 const MANIFEST = 'package.json'
 
@@ -50,11 +53,26 @@ export const CONTRACT: Requirement[] = [
     path: 'src/lib/schemas/common.ts',
     text: 'export function imageSchema',
     reason: "lo schema di una sezione con immagine lo importa da ../common, e lo chiama con l'helper di Astro",
+    images: 'local',
   },
   {
     kind: 'file',
     path: 'src/assets/placeholder.jpg',
     reason: 'il contenuto di una sezione con immagine ci punta appena generato',
+    images: 'local',
+  },
+  {
+    kind: 'anchor',
+    path: 'src/lib/schemas/common.ts',
+    text: 'export const photoSchema',
+    reason: 'lo schema di una sezione con la foto su Cloudinary lo importa da ../common',
+    images: 'cloudinary',
+  },
+  {
+    kind: 'file',
+    path: 'src/components/ui/photo.astro',
+    reason: 'una sezione con la foto su Cloudinary la mostra con questo componente',
+    images: 'cloudinary',
   },
   {
     kind: 'anchor',
@@ -120,9 +138,10 @@ function readManifest(root: string): Manifest {
   return existsSync(target) ? (JSON.parse(readFileSync(target, 'utf8')) as Manifest) : {}
 }
 
-export function contractGaps(root: string): ContractGap[] {
+export function contractGaps(root: string, images: ImageSource = 'local'): ContractGap[] {
   const manifest = readManifest(root)
-  return CONTRACT.flatMap((requirement) => {
+  const required = CONTRACT.filter((requirement) => requirement.images === undefined || requirement.images === images)
+  return required.flatMap((requirement) => {
     const gap = pathGap(root, requirement) ?? manifestGap(manifest, requirement)
     return gap === undefined ? [] : [gap]
   })

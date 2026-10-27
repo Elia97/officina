@@ -67,7 +67,12 @@ describe('gen:collection, pagina a sezioni: i file', () => {
     const { config } = registerWith(collectionGenerator, 'collection')
 
     for (const action of addActions(actionsFor(config, answers))) {
-      expect(action.data).toEqual({ collection: 'about', pageKey: 'companyAboutUs' })
+      expect(action.data).toEqual({
+        collection: 'about',
+        pageKey: 'companyAboutUs',
+        localImage: false,
+        cloudinaryImage: false,
+      })
       expect(Object.keys(action.data ?? {}).filter((key) => key in answers)).toEqual([])
     }
   })
