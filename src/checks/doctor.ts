@@ -31,7 +31,7 @@ import { trackedAndUntracked } from '../lib/git.ts'
 import { expectedRoutes, missingRepresentatives, readPageFiles, unknownDisabled } from '../lib/routes.ts'
 import { toolingGaps } from '../lib/tooling.ts'
 import { packageVersion } from '../lib/versions.ts'
-import { workflowGaps } from '../lib/workflows.ts'
+import { ciTimeoutGaps, workflowGaps } from '../lib/workflows.ts'
 
 const PAGES = 'src/pages'
 
@@ -126,7 +126,7 @@ export async function main(): Promise<number> {
     { title: 'preset di configurazione', gaps: presetGaps(files) },
     {
       title: 'workflow di GitHub e Dependabot',
-      gaps: [...workflowGaps(files, version), ...dependabotGaps(files)],
+      gaps: [...workflowGaps(files, version), ...ciTimeoutGaps(files), ...dependabotGaps(files)],
     },
     configSection(root, config),
     ...databaseAuthSections(files, usable(config), manifest),

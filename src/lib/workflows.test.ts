@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ProjectFiles } from './alignment.ts'
-import { actionInputGaps, workflowGaps } from './workflows.ts'
+import { actionInputGaps, ciTimeoutGaps, workflowGaps } from './workflows.ts'
 
 const files = (contents: Record<string, string> = {}): ProjectFiles => ({ paths: [], read: (path) => contents[path] })
 const messages = (gaps: { message: string }[]) => gaps.map(({ message }) => message)
@@ -154,5 +154,33 @@ describe('actionInputGaps e i segreti che un input non deve ricevere', () => {
       '`Elia97/officina/actions/ci` riceve `database-url` da `SHARED_URL`: è condiviso',
     ])
     expect(actionInputGaps(from('OLD_PRODUCTION_URL'), inputs)).toEqual([])
+  })
+})
+
+describe('ciTimeoutGaps', () => {
+  const job = (name: string, settings: string) =>
+    `  ${name}:\n    runs-on: ubuntu-latest\n${settings}    steps:\n      - uses: Elia97/officina/actions/ci@v${VERSION}\n`
+  const workflow = (jobs: string) => files({ '.github/workflows/ci.yml': `jobs:\n${jobs}` })
+
+  it('tace quando il job che usa actions/ci ha un tetto', () => {
+    expect(ciTimeoutGaps(workflow(job('ci', '    timeout-minutes: 20\n')))).toEqual([])
+  })
+
+  it('nomina con un avviso il job senza tetto, anche commentato o vuoto', () => {
+    const unbounded = workflow(
+      job('ci', '') + job('commentato', '    # timeout-minutes: 20\n') + job('vuoto', '    timeout-minutes:\n'),
+    )
+
+    expect(ciTimeoutGaps(unbounded).map(({ severity, message }) => [severity, message.split(' usa ')[0]])).toEqual([
+      ['warning', 'il job `ci`'],
+      ['warning', 'il job `commentato`'],
+      ['warning', 'il job `vuoto`'],
+    ])
+  })
+
+  it('tace sui job senza actions/ci, sul workflow assente o illeggibile: li dicono workflowGaps e actionInputGaps', () => {
+    expect(ciTimeoutGaps(workflow('  fallow:\n    steps:\n      - run: pnpm fallow\n'))).toEqual([])
+    expect(ciTimeoutGaps(files())).toEqual([])
+    expect(ciTimeoutGaps(files({ '.github/workflows/ci.yml': 'jobs: [aperta\n' }))).toEqual([])
   })
 })
