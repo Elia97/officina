@@ -1,36 +1,26 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ProjectFiles } from './alignment.ts'
 import { dependabotGaps } from './dependabot.ts'
-
-const files = (contents: Record<string, string> = {}): ProjectFiles => ({ paths: [], read: (path) => contents[path] })
-
-const gapsFor = (source: string): string[] =>
-  dependabotGaps(files({ '.github/dependabot.yml': source })).map(({ message }) => message)
-
-const GROUP = ['multi-ecosystem-groups:', '  officina:', '    schedule:', '      interval: weekly'].join('\n')
-
-const grouped = (ecosystem: string, pattern: string | undefined, extra: string[] = []): string =>
-  [
-    `  - package-ecosystem: ${ecosystem}`,
-    ...(pattern === undefined ? [] : [`    patterns: ['${pattern}']`]),
-    '    multi-ecosystem-group: officina',
-    ...extra,
-  ].join('\n')
-
-const COMMIT = ['    commit-message:', '      prefix: chore(deps)']
-
-const rest = (ecosystem: string, extra: string[] = COMMIT): string =>
-  [`  - package-ecosystem: ${ecosystem}`, ...extra].join('\n')
-
-const file = (...updates: string[]): string => ['version: 2', GROUP, 'updates:', ...updates].join('\n')
-
-const NPM_GROUPED = grouped('npm', '@elia97/officina')
-const ACTIONS_GROUPED = grouped('github-actions', 'Elia97/officina')
-const VALID = file(NPM_GROUPED, rest('npm'), ACTIONS_GROUPED, rest('github-actions'))
+import {
+  ACTIONS_GROUPED,
+  ACTIONS_REST,
+  BIOME_MAJOR,
+  COMMIT,
+  file,
+  files,
+  gapsFor,
+  grouped,
+  ignoring,
+  NPM_COOLDOWN,
+  NPM_GROUPED,
+  NPM_PATTERNS,
+  NPM_REST,
+  rest,
+  VALID,
+} from './test-helpers/dependabot-files.ts'
 
 describe('il file valido a quattro voci', () => {
-  it('non ha mancanze: due voci per ecosistema, una nel gruppo e una per il resto', () => {
+  it('nella forma di vetrina non ha mancanze: due voci per ecosistema, una nel gruppo e una per il resto', () => {
     expect(gapsFor(VALID)).toEqual([])
   })
 })
@@ -63,9 +53,9 @@ describe('il gruppo', () => {
   it('citato da una voce ma non definito', () => {
     const source = file(
       NPM_GROUPED.replace('multi-ecosystem-group: officina', 'multi-ecosystem-group: altro'),
-      rest('npm'),
+      NPM_REST,
       ACTIONS_GROUPED,
-      rest('github-actions'),
+      ACTIONS_REST,
     )
 
     expect(gapsFor(source)).toContain('la voce `npm` cita il gruppo `altro`, che non esiste')
@@ -76,10 +66,10 @@ describe('le chiavi che Dependabot vuole sul gruppo e non sulla voce', () => {
   it.each(['commit-message:\n      prefix: chore(deps)', 'open-pull-requests-limit: 5'])('%s', (extra) => {
     const key = extra.split(':')[0] ?? ''
     const source = file(
-      grouped('npm', '@elia97/officina', [`    ${extra}`]),
-      rest('npm'),
+      grouped('npm', NPM_PATTERNS, [...NPM_COOLDOWN, ...BIOME_MAJOR, `    ${extra}`]),
+      NPM_REST,
       ACTIONS_GROUPED,
-      rest('github-actions'),
+      ACTIONS_REST,
     )
 
     expect(gapsFor(source)).toContain(
@@ -89,16 +79,12 @@ describe('le chiavi che Dependabot vuole sul gruppo e non sulla voce', () => {
 })
 
 describe('quello che il gruppo deve coprire', () => {
-  it('senza patterns non copre niente, e lo dice per tutti e due gli ecosistemi', () => {
-    const source = file(
-      grouped('npm', undefined),
-      rest('npm'),
-      grouped('github-actions', undefined),
-      rest('github-actions'),
-    )
+  it('senza patterns non copre niente, e lo dice per ogni dipendenza del gruppo', () => {
+    const source = file(grouped('npm', []), rest('npm'), grouped('github-actions', []), rest('github-actions'))
 
     expect(gapsFor(source)).toEqual([
       'nessuna voce del gruppo copre `@elia97/officina`: il gruppo deve prendere il pacchetto da npm',
+      'nessuna voce del gruppo copre `@biomejs/biome`: il preset di officina nomina regole che una minor di Biome può rinominare, e i due aggiornamenti vanno in una PR sola',
       'nessuna voce del gruppo copre `Elia97/officina`: il gruppo deve prendere le action da github-actions',
     ])
   })
@@ -107,7 +93,6 @@ describe('quello che il gruppo deve coprire', () => {
 describe('il filtro sul percorso delle action, che Dependabot non riconosce', () => {
   const PATH_FILTER_GAP =
     '`Elia97/officina/*` non corrisponde a nessuna dipendenza: Dependabot chiama le action `Elia97/officina`, senza la sottocartella, e il filtro va corretto ovunque compaia'
-  const IGNORED = ['    ignore:', "      - dependency-name: 'Elia97/officina/*'"]
   const EXCLUDED = [
     '    groups:',
     '      github-actions:',
@@ -118,9 +103,9 @@ describe('il filtro sul percorso delle action, che Dependabot non riconosce', ()
   it("nei patterns del gruppo e nell'ignore del resto, come in red-solutions: una mancanza sola per il filtro", () => {
     const source = file(
       NPM_GROUPED,
-      rest('npm'),
-      grouped('github-actions', 'Elia97/officina/*'),
-      rest('github-actions', [...COMMIT, ...IGNORED]),
+      NPM_REST,
+      grouped('github-actions', ['Elia97/officina/*']),
+      rest('github-actions', [...COMMIT, ...ignoring('Elia97/officina/*')]),
     )
 
     expect(gapsFor(source)).toEqual([
@@ -130,10 +115,10 @@ describe('il filtro sul percorso delle action, che Dependabot non riconosce', ()
   })
 
   it.each([
-    { place: 'ignore', extra: IGNORED },
-    { place: 'exclude-patterns', extra: EXCLUDED },
+    { place: 'ignore', extra: ignoring('Elia97/officina', 'Elia97/officina/*') },
+    { place: 'exclude-patterns', extra: [...ignoring('Elia97/officina'), ...EXCLUDED] },
   ])('con il gruppo corretto e il filtro rimasto nel resto, in $place', ({ extra }) => {
-    const source = file(NPM_GROUPED, rest('npm'), ACTIONS_GROUPED, rest('github-actions', [...COMMIT, ...extra]))
+    const source = file(NPM_GROUPED, NPM_REST, ACTIONS_GROUPED, rest('github-actions', [...COMMIT, ...extra]))
 
     expect(gapsFor(source)).toEqual([PATH_FILTER_GAP])
   })
@@ -141,7 +126,7 @@ describe('il filtro sul percorso delle action, che Dependabot non riconosce', ()
 
 describe('lo spegnimento silenzioso', () => {
   it('un ecosistema che sta solo nella voce del gruppo, con patterns', () => {
-    const source = file(NPM_GROUPED, ACTIONS_GROUPED, rest('github-actions'))
+    const source = file(NPM_GROUPED, ACTIONS_GROUPED, ACTIONS_REST)
 
     expect(gapsFor(source)).toEqual([
       '`npm` sta solo nella voce del gruppo, con `patterns`: il resto non si aggiorna più',
@@ -149,7 +134,12 @@ describe('lo spegnimento silenzioso', () => {
   })
 
   it('la voce del resto senza commit-message: le sue PR non passano il titolo', () => {
-    const source = file(NPM_GROUPED, rest('npm', ['    directory: /']), ACTIONS_GROUPED, rest('github-actions'))
+    const source = file(
+      NPM_GROUPED,
+      rest('npm', ['    directory: /', ...ignoring('@elia97/officina', '@biomejs/biome')]),
+      ACTIONS_GROUPED,
+      ACTIONS_REST,
+    )
 
     expect(gapsFor(source)).toEqual([
       'la voce `npm` fuori dal gruppo non ha `commit-message`: le sue PR non passano il titolo',
