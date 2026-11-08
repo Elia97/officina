@@ -50,14 +50,14 @@ runs:
         pnpm run doctor
 
     - name: Tipi generati di Astro
-      if: ${{ steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: |
         pnpm exec astro sync || echo "::warning::astro sync non è riuscito: si prosegue senza i tipi generati"
       shell: bash
 
     # Una PR di Dependabot riceve solo i segreti di Dependabot, una da un fork nessuno: lì l'indirizzo è vuoto.
     - name: Migrazioni del branch di test
-      if: ${{ inputs.migrate != '' && steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ inputs.migrate != '' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       env:
         MIGRATE: ${{ inputs.migrate }}
@@ -71,7 +71,7 @@ runs:
 
     # L'`env:` di un passo vince su quello del job anche quando vale ''; il log intitola il passo con la prima riga di `run`.
     - name: pnpm run ci
-      if: ${{ steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       env:
         OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
@@ -81,12 +81,12 @@ runs:
         unset OFFICINA_TEST_DATABASE_URL
         pnpm run ci
 
-    - if: ${{ steps.scope.outputs.docs-only != 'true' }}
+    - if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: pnpm exec officina check secrets --canaries >> "$GITHUB_ENV"
       shell: bash
 
     - name: pnpm run build
-      if: ${{ steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       env:
         OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
@@ -97,16 +97,16 @@ runs:
         pnpm run build
 
     # Legge dist/client, quindi deve seguire la build.
-    - if: ${{ steps.scope.outputs.docs-only != 'true' }}
+    - if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: pnpm run perf:bundle
       shell: bash
 
-    - if: ${{ steps.scope.outputs.docs-only != 'true' }}
+    - if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: pnpm run check:links
       shell: bash
 
     - name: pnpm run check:secrets
-      if: ${{ steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       env:
         OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
@@ -117,7 +117,7 @@ runs:
         pnpm run check:secrets
 
     - name: Cache del browser di Playwright
-      if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/ms-playwright
@@ -125,18 +125,18 @@ runs:
 
     # Playwright installa le dipendenze con `sudo apt-get`, che non passa l'ambiente: i tempi vanno in un file.
     - name: Tempi massimi di apt per le dipendenze di Playwright
-      if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
+      if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       run: |
         printf '%s\n' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' 'Acquire::Retries "5";' \
           | sudo tee /etc/apt/apt.conf.d/99officina-timeouts >/dev/null
 
     # Solo chromium: gli scenari provano il codice del progetto, non le differenze fra motori.
-    - if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
+    - if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: pnpm exec playwright install --with-deps chromium
       shell: bash
 
     # Serve la stessa dist/client che perf:bundle ha appena misurato.
-    - if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' }}
+    - if: ${{ inputs.e2e == 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: pnpm run test:e2e
       shell: bash

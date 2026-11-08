@@ -43,15 +43,19 @@ function commitAll(git: Git, message: string): string {
   return git('rev-parse', 'HEAD').trim()
 }
 
-function commitBase({ git, write }: Repository): string {
+function commitBase({ git, write }: Repository, files: Record<string, string> = {}): string {
   write('src/lib/site.ts', 'export const SITE = {}\n')
   write('docs/ROADMAP.md', '# Roadmap\n')
+  for (const [path, text] of Object.entries(files)) write(path, text)
   return commitAll(git, 'chore: base')
 }
 
-export function repoWithChange(change: (write: Write, git: Git) => void): string {
+export function repoWithChange(
+  change: (write: Write, git: Git) => void,
+  baseFiles: Record<string, string> = {},
+): string {
   const repo = repository('officina-scope-')
-  const base = commitBase(repo)
+  const base = commitBase(repo, baseFiles)
   change(repo.write, repo.git)
   commitAll(repo.git, 'chore: modifica')
   process.chdir(repo.dir)

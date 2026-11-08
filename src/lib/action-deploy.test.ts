@@ -93,6 +93,12 @@ const BIN = fakePnpm()
 
 afterAll(() => rmSync(BIN, { recursive: true, force: true }))
 
+describe('il deploy e i controlli', () => {
+  it('non rilancia `pnpm run ci`: il codice del tag è quello già provato sulla PR', () => {
+    expect(position((run) => /\bpnpm run ci\b/.test(run))).toBe(-1)
+  })
+})
+
 describe('il deploy e lo smoke', () => {
   it("lancia lo smoke senza indirizzo: lo sceglie la configurazione, `smoke.url` prima dell'apice", () => {
     expect(named('Smoke di produzione')).toMatchObject({ shell: 'bash', run: 'pnpm run smoke:prod' })

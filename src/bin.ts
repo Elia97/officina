@@ -28,7 +28,7 @@ const USAGE = `Uso:
   officina doctor                   cosa manca al progetto perché i generatori funzionino
   officina gate                     i controlli completi, ci, audit:diff e build, con una riga per passo verde
   officina migrate --script <nome>  le migrazioni sotto database.migrationUrlKey: da TEST_DATABASE_URL, o con --production da PRODUCTION_DATABASE_URL
-  officina scope                    in actions/ci, docs-only=true se la PR o il push toccano solo documenti
+  officina scope                    in actions/ci, docs-only=true se la PR o il push toccano solo documenti, release-only=true se solo i file di una release
 
 Opzioni dei gate sui sorgenti: --diff, --base <ref>, --head <ref>, --strict, --format text|github
 bundle, links e secrets leggono dist/client; smoke [url] e analytics [GTM-…] vanno in rete; lighthouse [--local]
