@@ -5,6 +5,7 @@ import { useFixtureProject } from './test-fixture.ts'
 
 vi.mock('./gen/run.ts', () => ({ main: (args: string[]) => args.length }))
 vi.mock('./gen/icons.ts', () => ({ main: (args: string[]) => 40 + args.length }))
+vi.mock('./checks/gate.ts', () => ({ main: () => 7 }))
 
 useFixtureProject()
 
@@ -59,6 +60,10 @@ describe('officina', () => {
 
     expect(await run(['scope'])).toBe(0)
     expect(lines).toContain('docs-only=false')
+  })
+
+  it('gate passa al suo modulo e ne restituisce il codice', async () => {
+    expect(await run(['gate'])).toBe(7)
   })
 
   it('doctor esce 1 sul progetto di prova, che non ha tutti i punti di aggancio', async () => {
