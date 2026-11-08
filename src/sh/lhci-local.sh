@@ -91,6 +91,7 @@ LH_PORT="${PORT}" \
 LH_RUNS="${LHCI_RUNS:-1}" \
 LH_OUT="${REPORT_DIR}" \
 LH_EXTERNAL_SERVER=1 \
+LH_HTML_DIR="${OUT_DIR}/client" \
 LH_CHROME_FLAGS='--no-sandbox --disable-dev-shm-usage' \
   node "${OFFICINA_BIN}" check lighthouse
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -9,11 +9,13 @@ import { fileURLToPath } from 'node:url'
 
 import { missingInput } from '../lib/cli.ts'
 import { loadConfig } from '../lib/config.ts'
-import { baseUrlArg, type LighthouseRc, lighthouseConfig } from '../lib/lighthouse.ts'
+import { baseUrlArg, type LighthouseRc, lighthouseConfig, seoAssertions } from '../lib/lighthouse.ts'
+import { noindexInBuild, noindexOnSite } from '../lib/lighthouse-noindex.ts'
 import { auditRoutes, expectedRoutes, readPageFiles } from '../lib/routes.ts'
 
 const PAGES_DIR = 'src/pages'
 const RC_FILE = '.lighthouserc.json'
+const HTML_DIR = 'dist/client'
 
 // Build equivalente alla produzione, server statico e Chrome di Linux: lo script chiama di nuovo
 // questo comando, senza `--local`, quando il server risponde.
@@ -21,6 +23,28 @@ function runLocal(): number {
   const script = fileURLToPath(new URL('../sh/lhci-local.sh', import.meta.url))
   const env = { ...process.env, OFFICINA_BIN: process.argv[1] }
   return spawnSync('bash', [script], { stdio: 'inherit', env }).status ?? 1
+}
+
+type Noindex = { routes: ReadonlySet<string>; note?: string }
+
+async function noindexRoutes(routes: readonly string[], base: string | undefined): Promise<Noindex> {
+  if (base !== undefined) return { routes: await noindexOnSite(base, routes) }
+  const dir = process.env.LH_HTML_DIR ?? HTML_DIR
+  if (existsSync(dir)) return { routes: noindexInBuild(dir, routes) }
+  return {
+    routes: new Set(),
+    note: `${dir} non c'è: le pagine in noindex non si riconoscono, e il SEO resta asserito su ogni URL`,
+  }
+}
+
+function noindexNote(rc: LighthouseRc, noindex: Noindex): string | undefined {
+  if (noindex.routes.size === 0 || seoAssertions(rc.ci.assert) !== null) return noindex.note
+  return `le asserzioni di ${RC_FILE} non si dividono per URL (nessuna sul SEO, oppure \`preset\`, \`budgetsFile\` o \`assertMatrix\`): valgono uguali anche per le pagine in noindex`
+}
+
+function printUrls(rc: LighthouseRc, routes: readonly string[], urls: readonly string[], noindex: Noindex): void {
+  const mark = seoAssertions(rc.ci.assert) === null ? ' — noindex' : " — noindex: misurata, senza l'asserzione sul SEO"
+  for (const [index, route] of routes.entries()) console.log(`  ${urls[index]}${noindex.routes.has(route) ? mark : ''}`)
 }
 
 async function resolveConfig(url: string | undefined): Promise<LighthouseRc | null> {
@@ -32,12 +56,15 @@ async function resolveConfig(url: string | undefined): Promise<LighthouseRc | nu
   const expected = expectedRoutes(readPageFiles(PAGES_DIR), PAGES_DIR, configured.disabled)
   const routes = auditRoutes(expected, configured.representatives)
   const env = url === undefined ? process.env : { ...process.env, LH_BASE_URL: url }
-  const resolved = lighthouseConfig(rc, routes, env)
+  const noindex = await noindexRoutes(routes, env.LH_BASE_URL)
+  const resolved = lighthouseConfig(rc, routes, env, noindex.routes)
 
   const where = url === undefined ? '' : ` su ${url}`
   console.log(`\nLighthouse CI — ${routes.length} rotta/e derivate da ${PAGES_DIR}${where}\n`)
-  for (const page of resolved.ci.collect.url ?? []) console.log(`  ${page}`)
+  printUrls(rc, routes, resolved.ci.collect.url ?? [], noindex)
   for (const { label } of expected.disabled) console.log(`  ${label} — spenta da \`routes.disabled\`, non misurata`)
+  const note = noindexNote(rc, noindex)
+  if (note !== undefined) console.log(`\nNOTA  ${note}`)
   console.log()
   return resolved
 }
