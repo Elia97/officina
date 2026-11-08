@@ -2,31 +2,27 @@ import { parse } from 'yaml'
 
 import type { ProjectFiles } from './alignment.ts'
 import type { ContractGap } from './contract.ts'
+import {
+  ACTIONS,
+  BIOME,
+  covers,
+  DEPENDABOT,
+  gap,
+  groupFollowGaps,
+  inGroup,
+  isRecord,
+  PACKAGE,
+  type Update,
+} from './dependabot-group.ts'
 
-const DEPENDABOT = '.github/dependabot.yml'
-const PACKAGE = '@elia97/officina'
-const ACTIONS = 'Elia97/officina'
 const PATH_FILTER = `${ACTIONS}/*`
 
 const GROUP_ONLY: readonly string[] = ['commit-message', 'open-pull-requests-limit']
-
-interface Update {
-  'package-ecosystem'?: string
-  patterns?: readonly string[]
-  'multi-ecosystem-group'?: string
-  'commit-message'?: unknown
-  'open-pull-requests-limit'?: unknown
-}
 
 interface Dependabot {
   'multi-ecosystem-groups'?: Record<string, unknown>
   updates?: readonly Update[]
 }
-
-const gap = (message: string): ContractGap => ({ path: DEPENDABOT, message })
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 function read(source: string): Dependabot | string {
   try {
@@ -36,10 +32,6 @@ function read(source: string): Dependabot | string {
     return `non è YAML valido: ${String(error).replace(/\n[\s\S]*$/, '')}`
   }
 }
-
-const inGroup = (updates: readonly Update[]) => updates.filter((u) => u['multi-ecosystem-group'] !== undefined)
-
-const covers = (update: Update, needle: string): boolean => (update.patterns ?? []).includes(needle)
 
 function groupGaps(document: Dependabot, updates: readonly Update[]): ContractGap[] {
   const groups = document['multi-ecosystem-groups']
@@ -64,16 +56,25 @@ const misplacedGaps = (updates: readonly Update[]): ContractGap[] =>
     ),
   )
 
+const COVERED: readonly { ecosystem: string; needle: string; reason: string; severity?: 'warning' }[] = [
+  { ecosystem: 'npm', needle: PACKAGE, reason: 'il gruppo deve prendere il pacchetto da npm' },
+  {
+    ecosystem: 'npm',
+    needle: BIOME,
+    reason:
+      'il preset di officina nomina regole che una minor di Biome può rinominare, e i due aggiornamenti vanno in una PR sola',
+    severity: 'warning',
+  },
+  { ecosystem: 'github-actions', needle: ACTIONS, reason: 'il gruppo deve prendere le action da github-actions' },
+]
+
 const coverageGaps = (updates: readonly Update[]): ContractGap[] =>
-  [
-    { ecosystem: 'npm', needle: PACKAGE, reason: 'il gruppo deve prendere il pacchetto da npm' },
-    { ecosystem: 'github-actions', needle: ACTIONS, reason: 'il gruppo deve prendere le action da github-actions' },
-  ]
-    .filter(
-      ({ ecosystem, needle }) =>
-        !inGroup(updates).some((u) => u['package-ecosystem'] === ecosystem && covers(u, needle)),
-    )
-    .map(({ needle, reason }) => gap(`nessuna voce del gruppo copre \`${needle}\`: ${reason}`))
+  COVERED.filter(
+    ({ ecosystem, needle }) => !inGroup(updates).some((u) => u['package-ecosystem'] === ecosystem && covers(u, needle)),
+  ).map(({ needle, reason, severity }) => ({
+    ...gap(`nessuna voce del gruppo copre \`${needle}\`: ${reason}`),
+    ...(severity === undefined ? {} : { severity }),
+  }))
 
 const strings = (value: unknown): string[] => {
   if (typeof value === 'string') return [value]
@@ -122,5 +123,6 @@ export function dependabotGaps({ read: readFile }: ProjectFiles): ContractGap[] 
     ...coverageGaps(updates),
     ...pathFilterGaps(document),
     ...restGaps(updates),
+    ...groupFollowGaps(updates),
   ]
 }
