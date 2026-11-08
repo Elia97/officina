@@ -26,6 +26,7 @@ const USAGE = `Uso:
   officina gen [generatore]         section, page, component, collection, più quelli del progetto
   officina gen icons                le icone del manifest da public/favicon.svg
   officina doctor                   cosa manca al progetto perché i generatori funzionino
+  officina gate                     i controlli completi, ci, audit:diff e build, con una riga per passo verde
   officina migrate --script <nome>  le migrazioni sotto database.migrationUrlKey: da TEST_DATABASE_URL, o con --production da PRODUCTION_DATABASE_URL
   officina scope                    in actions/ci, docs-only=true se la PR o il push toccano solo documenti
 
@@ -42,6 +43,7 @@ const GROUPS: Record<string, (args: string[]) => { load: Loader | undefined; arg
       ? { load: () => import('./gen/icons.ts'), args: args.slice(1) }
       : { load: () => import('./gen/run.ts'), args },
   doctor: (args) => ({ load: () => import('./checks/doctor.ts'), args }),
+  gate: (args) => ({ load: () => import('./checks/gate.ts'), args }),
   migrate: (args) => ({ load: () => import('./checks/migrate.ts'), args }),
   scope: (args) => ({ load: () => import('./checks/scope.ts'), args }),
 }

@@ -31,7 +31,8 @@ pnpm add -D @elia97/officina
     "gen:component": "officina gen component",
     "gen:collection": "officina gen collection",
     "gen:icons": "officina gen icons",
-    "doctor": "officina doctor"
+    "doctor": "officina doctor",
+    "gate": "officina gate"
   }
 }
 ```
@@ -262,6 +263,26 @@ Dopo `vercel pull` e `check:placeholders --env`, subito prima di `vercel build`,
 Quello che si scarica al volo è fissato a una versione esatta, in un posto solo: la CLI di Vercel in `actions/deploy/action.yml`, `@lhci/cli` in `src/checks/lighthouse.ts`, `serve` in `src/sh/lhci-local.sh`. Che i primi due siano esatti, uguali ovunque e non indietro di una major su npm lo guarda ogni lunedì `.github/workflows/vercel-cli.yml`, con `officina check vercel-cli`.
 
 Perché le action non restino ferme per sempre, Dependabot di questo repository copre l'ecosistema `github-actions` anche dentro `/actions/*`, dove le action di terze parti sono fissate allo SHA intero con la versione nel commento.
+
+## gate
+
+`officina gate` lancia i controlli completi di un progetto prima di una PR, e stampa poco: è fatto per chi li legge da una conversazione con un agente. I passi sono i pezzi dello script `ci` di `package.json`, divisi sugli `&&`, poi `audit:diff` e `build` se il progetto li ha. Se `ci` contiene altra sintassi di shell (`||`, `|`, `;`, `&`, `` ` ``, `$(`), dividerlo ne cambierebbe il significato, e si lancia intero come un passo solo. Un pezzo come `biome ci .` gira con i binari del progetto davanti al `PATH`, come farebbe `pnpm run`.
+
+```
+officina gate — 12 passi: i 10 di ci, audit:diff, build
+
+  ✓ biome ci --error-on-warnings .      1,4 s
+  ✓ typecheck                          12,1 s
+  ✗ check:deadcode                      1,0 s
+
+  ✗ 2 exports (0.14s)
+  ...
+
+  Fermo su check:deadcode: 9 passi non lanciati.
+  Log completo: node_modules/.cache/officina/gate/03-check_deadcode.log
+```
+
+Un passo verde è una riga, con la durata. Al primo rosso il comando si ferma ed esce con il codice di quel passo; dell'output stampa al massimo 60 righe, senza colori, senza la riga `$ comando` e la riga `ELIFECYCLE` di pnpm, senza righe vuote ripetute. L'output intero di ogni passo, senza colori, sta in `node_modules/.cache/officina/gate/`, che si svuota a ogni corsa. In un terminale il passo in corso si vede su una riga che si aggiorna; fuori da un terminale escono solo le righe finali.
 
 ## doctor
 
