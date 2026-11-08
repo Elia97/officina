@@ -77,6 +77,8 @@ export function changedSince(base: string): string[] {
   return gitPaths('diff', ['--name-only', '--no-renames', '--ignore-submodules=none', base, 'HEAD'])
 }
 
+export const fileAt = (ref: string, path: string): string => git(['show', `${ref}:${path}`])
+
 export type DiffScope = { base?: string | undefined; head?: string | undefined }
 
 export function changedFiles({ base, head }: DiffScope): string[] {

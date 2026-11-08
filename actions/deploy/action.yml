@@ -101,10 +101,6 @@ runs:
     - run: pnpm run check:placeholders
       shell: bash
 
-    # Il `vercel build` qui sotto esegue solo `astro build`: niente Biome, niente astro check, niente vitest.
-    - run: pnpm run ci
-      shell: bash
-
     # Pin esatto: la sola major ridà una CLI diversa ogni settimana, e un deploy che fallisce non si
     # riproduce. Che su npm ne esca una più nuova lo dice `.github/workflows/vercel-cli.yml`.
     - run: pnpm dlx vercel@62.2.0 pull --yes --environment=production
