@@ -11,7 +11,7 @@ const onVercel = ({ baseUrl, siteUrl }: Addresses): boolean => {
 
 const OUT_OF_INDEX = new Set(['noindex', 'none'])
 
-const keepsOutOfIndex = (robots: string): boolean =>
+export const keepsOutOfIndex = (robots: string): boolean =>
   robots.split(',').some((directive) => OUT_OF_INDEX.has(directive.trim().toLowerCase()))
 
 export function checkRobotsTag(addresses: Addresses, url: string, robots: string | null): CheckResult {

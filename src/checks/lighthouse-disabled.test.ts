@@ -13,6 +13,7 @@ const roots: string[] = []
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   process.chdir(original)
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
@@ -38,6 +39,10 @@ describe('check lighthouse e una pagina dinamica spenta per scelta', () => {
       writeFileSync(join(root, name), source)
     }
     process.chdir(root)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html></html>')),
+    )
 
     const lines: string[] = []
     vi.spyOn(console, 'log').mockImplementation((line: string) => void lines.push(line))
