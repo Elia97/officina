@@ -176,8 +176,3 @@ export function smokeRoutes(
 ): VerifiedRoute[] {
   return [...auditRoutes(expected, representatives).map((path) => ({ path, type: 'text/html' })), ...nonHtmlRoutes]
 }
-
-export function orphanExceptions(expected: Expectations): string[] {
-  const routes = new Set(expected.exact.map(({ route }) => route))
-  return ERROR_PAGES.filter((page) => !routes.has(page))
-}
