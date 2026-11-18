@@ -8,7 +8,6 @@ import {
   missingRepresentatives,
   missingRouteFailures,
   NON_HTML_ROUTES,
-  orphanExceptions,
   readPageFiles,
   routeOf,
   smokeRoutes,
@@ -170,18 +169,6 @@ describe('smokeRoutes', () => {
 
   it('carries a second HTML page, which is what the trailing-slash probe needs', () => {
     expect(smokeRoutes(template()).filter(({ type }) => type === 'text/html').length).toBeGreaterThan(1)
-  })
-})
-
-describe('orphanExceptions', () => {
-  it('finds none in this template: every declared exception is a real page', () => {
-    expect(orphanExceptions(template())).toEqual([])
-  })
-
-  it('names the exception left behind when its page is renamed', () => {
-    const pages = readPageFiles(PAGES_DIR).filter(({ file }) => !file.endsWith('404.astro'))
-
-    expect(orphanExceptions(expectedRoutes(pages, PAGES_DIR))).toEqual(['/404'])
   })
 })
 

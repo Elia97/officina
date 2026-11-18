@@ -1,4 +1,4 @@
-import { type Expectations, pageRouteOf, type Representatives } from './routes.ts'
+import { ERROR_PAGES, type Expectations, pageRouteOf, type Representatives } from './routes.ts'
 import type { CheckResult, SmokeContext, SmokeResponse } from './smoke-production.ts'
 
 export type OnDemandPage = { label: string; path?: string }
@@ -10,6 +10,7 @@ export function onDemandPages(
 ): OnDemandPage[] {
   return expected.ssr
     .map((file) => pageRouteOf(file, pagesDir))
+    .filter((label) => !ERROR_PAGES.includes(label))
     .sort()
     .map((label) => {
       const path = label.includes('[') ? representatives[label] : label

@@ -23,6 +23,12 @@ describe('onDemandPages', () => {
       { label: '/pannello', path: '/pannello' },
     ])
   })
+
+  it("lascia fuori le pagine d'errore rese a richiesta, che rispondono con il proprio stato", () => {
+    const ssr = ['src/pages/500.astro', 'src/pages/accedi.astro', 'src/pages/404.astro']
+
+    expect(onDemandPages(expected(ssr), 'src/pages')).toEqual([{ label: '/accedi', path: '/accedi' }])
+  })
 })
 
 const ACCEDI: OnDemandPage[] = [{ label: '/accedi', path: '/accedi' }]
