@@ -153,6 +153,17 @@ describe('databaseAuthGaps e lo schema delle variabili', () => {
     ])
   })
 
+  it('nomina la voce dello schema che non sa leggere, invece di dare per mancanti le chiavi', () => {
+    const schema = `export default defineConfig({
+  env: { schema: { ...projectEnvSchema, BETTER_AUTH_SECRET: envField.string({ context: 'server', access: 'secret' }) } },
+})
+`
+
+    expect(messages(databaseAuthGaps(project({ 'astro.config.mjs': schema }), SCRIPTS, ['database', 'auth']))).toEqual([
+      '`...projectEnvSchema` in `env.schema` non si legge dal sorgente: uno spread, le cui chiavi stanno in un altro punto del codice',
+    ])
+  })
+
   it('senza astro.config.mjs lo dice una volta sola, per quante chiavi debba contenere', () => {
     expect(
       messages(databaseAuthGaps(project({ 'astro.config.mjs': undefined }), SCRIPTS, ['database', 'auth'])),

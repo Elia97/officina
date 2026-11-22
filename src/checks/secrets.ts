@@ -4,7 +4,7 @@ import process from 'node:process'
 import { parseArgs } from 'node:util'
 
 import { cliOptions, exitCode, missingInput, printFindings } from '../lib/cli.ts'
-import { envSchema } from '../lib/env-schema.ts'
+import { envSchema, type Unreadable } from '../lib/env-schema.ts'
 import { filesWithExtension } from '../lib/routes.ts'
 import { canaryLines, scanSecrets, secretFields } from '../lib/secrets.ts'
 
@@ -12,6 +12,16 @@ const SCHEMA = 'astro.config.mjs'
 const DIST = 'dist/client'
 const ADVICE =
   'Una chiave server e secret si legge solo nel codice che gira sul server: segui la strada che la porta nel file nominato'
+const FIELD_SHAPE = "CHIAVE: envField.<tipo>({ context: '…', access: '…' })"
+
+function unreadableSchema(entries: readonly Unreadable[]): number {
+  console.error(
+    `\n✗ ${SCHEMA}: env.schema ha voci che officina non legge dal sorgente, e le chiavi che portano resterebbero fuori dal controllo:`,
+  )
+  for (const { entry, reason } of entries) console.error(`  - \`${entry}\`: ${reason}`)
+  console.error(`\n  Scrivi ogni chiave in env.schema di ${SCHEMA}, come \`${FIELD_SHAPE}\`.\n`)
+  return 1
+}
 
 function check(keys: readonly string[]): number {
   const counted = keys.length === 1 ? '1 chiave' : `${keys.length} chiavi`
@@ -37,7 +47,9 @@ function check(keys: readonly string[]): number {
 export function main(args: string[] = process.argv.slice(2)): number {
   const { canaries } = parseArgs({ args, options: { canaries: { type: 'boolean', default: false } } }).values
   if (missingInput(SCHEMA, 'le chiavi segrete stanno nel suo `env.schema`')) return 1
-  const secrets = secretFields(envSchema(readFileSync(SCHEMA, 'utf8')))
+  const schema = envSchema(readFileSync(SCHEMA, 'utf8'))
+  if (schema.unreadable.length > 0) return unreadableSchema(schema.unreadable)
+  const secrets = secretFields(schema.fields)
   if (!canaries) return check(secrets.map(({ key }) => key))
   for (const line of canaryLines(secrets)) console.log(line)
   return 0

@@ -105,6 +105,37 @@ describe('check secrets su una build', () => {
   })
 })
 
+const SPLIT = `export default defineConfig({
+  env: {
+    schema: {
+      ...vetrinaFields,
+      OFFICINA_PROVA_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+    },
+  },
+})
+`
+
+describe('check secrets su uno schema che non legge per intero', () => {
+  it('uno spread in env.schema ferma il controllo e nomina la voce, prima di cercare nella build', () => {
+    const root = project({ 'astro.config.mjs': SPLIT, 'dist/client/index.html': '<p>Acme</p>' })
+
+    const { exitCode, out, err } = run(root)
+
+    expect(exitCode).toBe(1)
+    expect(out).toBe('')
+    expect(err).toContain('env.schema ha voci che officina non legge dal sorgente')
+    expect(err).toContain('`...vetrinaFields`: uno spread')
+  })
+
+  it('con --canaries non stampa righe per la build: sarebbero incomplete', () => {
+    const { exitCode, out, err } = run(project({ 'astro.config.mjs': SPLIT }), ['--canaries'])
+
+    expect(exitCode).toBe(1)
+    expect(out).toBe('')
+    expect(err).toContain('`...vetrinaFields`')
+  })
+})
+
 describe('check secrets --canaries', () => {
   it("stampa soltanto le righe per l'ambiente della build, e solo per i campi stringa", () => {
     const { exitCode, out, err } = run(project({ 'astro.config.mjs': SCHEMA }), ['--canaries'])

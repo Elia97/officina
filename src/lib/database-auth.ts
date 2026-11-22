@@ -73,11 +73,19 @@ function secretGaps(source: string | undefined, keys: readonly string[]): Contra
   if (keys.length === 0) return []
   if (source === undefined)
     return [{ path: ASTRO_CONFIG, message: 'manca: lo schema delle variabili, `env.schema`, sta lì' }]
-  const fields = new Map(envSchema(source).map((field) => [field.key, field]))
-  return keys.flatMap((key) => {
-    const message = secretGap(key, fields.get(key))
+  const { fields, unreadable } = envSchema(source)
+  const byKey = new Map(fields.map((field) => [field.key, field]))
+  const unreadableGaps = unreadable.map(({ entry, reason }) => ({
+    path: ASTRO_CONFIG,
+    message: `\`${entry}\` in \`env.schema\` non si legge dal sorgente: ${reason}`,
+  }))
+  const keyGaps = keys.flatMap((key) => {
+    const field = byKey.get(key)
+    if (field === undefined && unreadable.length > 0) return []
+    const message = secretGap(key, field)
     return message === undefined ? [] : [{ path: ASTRO_CONFIG, message }]
   })
+  return [...unreadableGaps, ...keyGaps]
 }
 
 export function databaseAuthGaps(
