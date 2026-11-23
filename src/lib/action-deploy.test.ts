@@ -1,39 +1,15 @@
-import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 
+import { DEPLOY, expression, inputs, named, runs, shell } from './test-helpers/action-steps.ts'
 import { fakePnpm } from './test-helpers/fake-pnpm.ts'
 
-const DEPLOY = fileURLToPath(new URL('../../actions/deploy', import.meta.url))
 const VERSION: string = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version
 const STEP = "Stessa versione di officina nel tag e nell'action"
 const MIGRATIONS = 'Migrazioni della produzione'
-
-interface Step {
-  name?: string
-  if?: string
-  shell?: string
-  run?: string
-  env?: Record<string, string>
-}
-
-const { inputs, runs } = parse(readFileSync(join(DEPLOY, 'action.yml'), 'utf8')) as {
-  inputs: Record<string, unknown>
-  runs: { steps: Step[] }
-}
-
-const expression = (body: string) => `\${{ ${body} }}`
-
-function named(name: string): Step {
-  const step = runs.steps.find((candidate) => candidate.name === name)
-  if (step === undefined) throw new Error(`il passo «${name}» non c'è in actions/deploy/action.yml`)
-  return step
-}
 
 const roots: string[] = []
 
@@ -51,14 +27,6 @@ function checkout(installed?: string): string {
   }
   return root
 }
-
-// La shell di un passo `shell: bash` su GitHub Actions: bash --noprofile --norc -eo pipefail {0}.
-const shell = (name: string, cwd: string, env: Record<string, string>) =>
-  spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', named(name).run ?? ''], {
-    cwd,
-    encoding: 'utf8',
-    env,
-  })
 
 const step = (cwd: string) => shell(STEP, cwd, { ...process.env, GITHUB_ACTION_PATH: DEPLOY, TARGET_REF: 'v1.2.3' })
 
@@ -96,12 +64,6 @@ afterAll(() => rmSync(BIN, { recursive: true, force: true }))
 describe('il deploy e i controlli', () => {
   it('non rilancia `pnpm run ci`: il codice del tag è quello già provato sulla PR', () => {
     expect(position((run) => /\bpnpm run ci\b/.test(run))).toBe(-1)
-  })
-})
-
-describe('il deploy e lo smoke', () => {
-  it("lancia lo smoke senza indirizzo: lo sceglie la configurazione, `smoke.url` prima dell'apice", () => {
-    expect(named('Smoke di produzione')).toMatchObject({ shell: 'bash', run: 'pnpm run smoke:prod' })
   })
 })
 

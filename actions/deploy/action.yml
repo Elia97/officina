@@ -26,6 +26,10 @@ inputs:
     description: "L'indirizzo di produzione per le migrazioni: il progetto passa il proprio segreto PRODUCTION_DATABASE_URL, dell'environment production"
     required: false
     default: ''
+  site-url-env:
+    description: "La chiave dell'indirizzo del sito in `.vercel/.env.production.local`, che lo smoke riceve come variabile d'ambiente (vuoto = nessuna)"
+    required: false
+    default: 'SITE_URL'
 
 outputs:
   url:
@@ -145,5 +149,22 @@ runs:
 
     # `astro dev` non legge mai vercel.json: intestazioni e rewrite si provano davvero solo qui.
     - name: Smoke di produzione
-      run: pnpm run smoke:prod
       shell: bash
+      env:
+        # `officina.config.ts` calcola `siteUrl` nel processo dello smoke, e in vetrina lo legge da `SITE_URL`.
+        # `vercel pull` scrive `[SENSITIVE]` al posto dei valori Secret in `.vercel/.env.production.local`.
+        SITE_URL_ENV: ${{ inputs.site-url-env }}
+      run: |
+        if [ -n "$SITE_URL_ENV" ]; then
+          if [[ ! "$SITE_URL_ENV" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            echo "::error::site-url-env vale «$SITE_URL_ENV», che non è il nome di una variabile d'ambiente"
+            exit 1
+          fi
+          value=$(node -e 'const { parseEnv } = require("node:util"); const { readFileSync } = require("node:fs"); process.stdout.write(parseEnv(readFileSync(".vercel/.env.production.local", "utf8"))[process.env.SITE_URL_ENV] ?? "")')
+          if [ "$value" = '[SENSITIVE]' ]; then
+            echo "::error::$SITE_URL_ENV è una variabile Secret su Vercel, e vercel pull ne scrive solo [SENSITIVE]: lo smoke ha bisogno dell'indirizzo del sito, quindi la variabile va resa non Sensitive, oppure site-url-env: '' se il progetto non lo legge da lì"
+            exit 1
+          fi
+          if [ -n "$value" ]; then export "$SITE_URL_ENV=$value"; fi
+        fi
+        pnpm run smoke:prod
