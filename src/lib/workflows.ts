@@ -85,9 +85,9 @@ function jobsOf(source: string): [string, Record<string, unknown>][] | string {
   return Object.entries(workflow.jobs).filter((entry): entry is [string, Record<string, unknown>] => isRecord(entry[1]))
 }
 
-const stepsOf = (job: Record<string, unknown>): unknown[] => (Array.isArray(job.steps) ? job.steps : [])
+export const stepsOf = (job: Record<string, unknown>): unknown[] => (Array.isArray(job.steps) ? job.steps : [])
 
-const usesAction = (step: unknown, action: string): step is Record<string, unknown> =>
+export const usesAction = (step: unknown, action: string): step is Record<string, unknown> =>
   isRecord(step) && String(step.uses).startsWith(`${actionName(action)}@`)
 
 function stepsUsing(source: string, action: string): Record<string, unknown>[] | string {

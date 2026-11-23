@@ -30,6 +30,7 @@ export interface Update {
   'open-pull-requests-limit'?: unknown
   ignore?: unknown
   cooldown?: unknown
+  schedule?: unknown
 }
 
 export const gap = (message: string): ContractGap => ({ path: DEPENDABOT, message })
