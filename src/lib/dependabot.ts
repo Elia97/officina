@@ -14,6 +14,7 @@ import {
   PACKAGE,
   type Update,
 } from './dependabot-group.ts'
+import { scheduleGaps } from './dependabot-schedule.ts'
 
 const PATH_FILTER = `${ACTIONS}/*`
 
@@ -124,5 +125,6 @@ export function dependabotGaps({ read: readFile }: ProjectFiles): ContractGap[] 
     ...pathFilterGaps(document),
     ...restGaps(updates),
     ...groupFollowGaps(updates),
+    ...scheduleGaps(updates),
   ]
 }

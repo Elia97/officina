@@ -28,17 +28,42 @@ runs:
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version-file: '.nvmrc'
-        cache: 'pnpm'
-
-    - run: pnpm install --frozen-lockfile
-      shell: bash
 
     # Un workflow saltato da `paths-ignore` lascia il check obbligatorio `ci` in attesa.
     - name: Percorso della corsa
       id: scope
       shell: bash
       run: |
-        pnpm exec officina scope >> "$GITHUB_OUTPUT" || echo "::warning::officina scope non è riuscito: si fa il percorso completo"
+        node "$GITHUB_ACTION_PATH/../../src/checks/scope.ts" >> "$GITHUB_OUTPUT" || echo "::warning::officina scope non è riuscito: si fa il percorso completo"
+
+    - if: ${{ steps.scope.outputs.release-only != 'true' }}
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'pnpm'
+
+    - if: ${{ steps.scope.outputs.release-only != 'true' }}
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    # Dall'API e non dal payload: un rerun riusa il payload dell'evento, con il titolo di allora.
+    - name: Titolo della PR
+      if: ${{ github.event_name == 'pull_request' && steps.scope.outputs.release-only != 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        title=$(gh pr view "$PR" --repo "$REPO" --json title --jq .title) || {
+          echo "::error::gh pr view non è riuscito: il workflow ha bisogno del permesso pull-requests: read"
+          exit 1
+        }
+        echo "$title"
+        if ! printf '%s\n' "$title" | pnpm exec commitlint; then
+          echo "::error::il titolo della PR non rispetta le regole dei commit: correggilo e rilancia con gh run rerun --failed"
+          exit 1
+        fi
 
     - name: Controlli dei documenti
       if: ${{ steps.scope.outputs.docs-only == 'true' }}

@@ -28,6 +28,7 @@ import { type ContractGap, contractGaps } from '../lib/contract.ts'
 import { databaseAuthGaps } from '../lib/database-auth.ts'
 import { dependabotGaps } from '../lib/dependabot.ts'
 import { trackedAndUntracked } from '../lib/git.ts'
+import { pullRequestGaps } from '../lib/pr-workflows.ts'
 import { expectedRoutes, missingRepresentatives, readPageFiles, unknownDisabled } from '../lib/routes.ts'
 import { toolingGaps } from '../lib/tooling.ts'
 import { packageVersion } from '../lib/versions.ts'
@@ -127,7 +128,12 @@ export async function main(): Promise<number> {
     { title: 'preset di configurazione', gaps: presetGaps(files) },
     {
       title: 'workflow di GitHub e Dependabot',
-      gaps: [...workflowGaps(files, version), ...ciTimeoutGaps(files), ...dependabotGaps(files)],
+      gaps: [
+        ...workflowGaps(files, version),
+        ...ciTimeoutGaps(files),
+        ...pullRequestGaps(files),
+        ...dependabotGaps(files),
+      ],
     },
     configSection(root, config),
     ...databaseAuthSections(files, usable(config), manifest),
