@@ -22,7 +22,7 @@ const PLACEHOLDER_IMAGE = /\bassets\/placeholder\.jpg\b/
 
 type EnvHit = Omit<Finding, 'path'>
 
-// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@62.2.0: `vercel pull` lo scrive al posto del valore di una Secret.
+// `SENSITIVE_ENV_VALUE_PLACEHOLDER` di vercel@66.6.0: `vercel pull` lo scrive al posto del valore di una Secret.
 const SENSITIVE = '[SENSITIVE]'
 
 const WITHOUT_VALUE = 'il deploy andrebbe online senza il suo valore'
