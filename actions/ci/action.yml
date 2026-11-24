@@ -47,6 +47,7 @@ runs:
       shell: bash
 
     # Dall'API e non dal payload: un rerun riusa il payload dell'evento, con il titolo di allora.
+    # Dependabot scrive «Bump» maiuscolo se lo è il suo ultimo commit sul branch principale, senza un'opzione per cambiarlo.
     - name: Titolo della PR
       if: ${{ github.event_name == 'pull_request' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
@@ -54,12 +55,17 @@ runs:
         GH_TOKEN: ${{ github.token }}
         PR: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
       run: |
         title=$(gh pr view "$PR" --repo "$REPO" --json title --jq .title) || {
           echo "::error::gh pr view non è riuscito: il workflow ha bisogno del permesso pull-requests: read"
           exit 1
         }
         echo "$title"
+        subject='^([^:]+: )(.*)$'
+        if [ "$AUTHOR" = 'dependabot[bot]' ] && [[ $title =~ $subject ]]; then
+          title="${BASH_REMATCH[1]}${BASH_REMATCH[2],}"
+        fi
         if ! printf '%s\n' "$title" | pnpm exec commitlint; then
           echo "::error::il titolo della PR non rispetta le regole dei commit: correggilo e rilancia con gh run rerun --failed"
           exit 1
