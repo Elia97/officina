@@ -107,7 +107,7 @@ runs:
 
     # Pin esatto: la sola major ridà una CLI diversa ogni settimana, e un deploy che fallisce non si
     # riproduce. Che su npm ne esca una più nuova lo dice `.github/workflows/vercel-cli.yml`.
-    - run: pnpm dlx vercel@62.2.0 pull --yes --environment=production
+    - run: pnpm dlx vercel@66.6.0 pull --yes --environment=production
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
@@ -125,7 +125,7 @@ runs:
         PRODUCTION_DATABASE_URL: ${{ inputs.database-url }}
       run: pnpm exec officina migrate --production --script "$MIGRATE"
 
-    - run: pnpm dlx vercel@62.2.0 build --prod
+    - run: pnpm dlx vercel@66.6.0 build --prod
       shell: bash
       env:
         VERCEL_TOKEN: ${{ inputs.vercel-token }}
@@ -143,7 +143,7 @@ runs:
         VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
         VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
       run: |
-        url=$(pnpm dlx vercel@62.2.0 deploy --prebuilt --prod)
+        url=$(pnpm dlx vercel@66.6.0 deploy --prebuilt --prod)
         echo "url=$url" >> "$GITHUB_OUTPUT"
         echo "Deployment: $url"
 
@@ -162,7 +162,7 @@ runs:
           fi
           value=$(node -e 'const { parseEnv } = require("node:util"); const { readFileSync } = require("node:fs"); process.stdout.write(parseEnv(readFileSync(".vercel/.env.production.local", "utf8"))[process.env.SITE_URL_ENV] ?? "")')
           if [ "$value" = '[SENSITIVE]' ]; then
-            echo "::error::$SITE_URL_ENV è una variabile Secret su Vercel, e vercel pull ne scrive solo [SENSITIVE]: lo smoke ha bisogno dell'indirizzo del sito, quindi la variabile va resa non Sensitive, oppure site-url-env: '' se il progetto non lo legge da lì"
+            echo "::error::$SITE_URL_ENV è una variabile Secret su Vercel, e vercel pull ne scrive solo [SENSITIVE]: lo smoke ha bisogno dell'indirizzo del sito, quindi la variabile va tolta e riaggiunta come Config, oppure site-url-env: '' se il progetto non lo legge da lì"
             exit 1
           fi
           if [ -n "$value" ]; then export "$SITE_URL_ENV=$value"; fi
