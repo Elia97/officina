@@ -56,7 +56,8 @@ describe('officina gate, il rapporto', () => {
       '  ✓ build',
     ])
     expect(lines[4]).toMatch(/^ {2}Verde in \d+,\d s\.$/)
-    expect(lines).toHaveLength(5)
+    expect(lines[5]).toMatch(/^ {2}Tree non annotato: /)
+    expect(lines).toHaveLength(6)
     expect(log(root, '01-echo_uno.log')).toBe('uno\n')
     expect(log(root, '03-build.log')).toContain('pnpm run build')
     expect(existsSync(join(root, LOGS, '99-vecchio.log'))).toBe(false)
@@ -108,5 +109,38 @@ describe('officina gate, dove lancia e quando non lancia', () => {
     expect(noManifest.status).toBe(1)
     expect(noManifest.stderr).toContain('non si legge nella cartella corrente')
     expect(noCi.stdout + noManifest.stdout).toBe('')
+  })
+})
+
+const VERIFIED = 'node_modules/.cache/officina/gate-tree'
+
+function repository(scripts: Record<string, string>): string {
+  const root = project(scripts, { '.gitignore': 'node_modules/\n' })
+  spawnSync('git', ['init', '--quiet'], { cwd: root })
+  return root
+}
+
+describe("officina gate, l'annotazione per signoff", () => {
+  it('da verde annota il tree di lavoro, con i file non tracciati', () => {
+    const root = repository({ ci: 'echo uno' })
+
+    const { status, stdout } = gate(root)
+
+    expect(status).toBe(0)
+    const verified = readFileSync(join(root, VERIFIED), 'utf8').trim()
+    expect(verified).toMatch(/^[0-9a-f]{40}$/)
+    expect(stdout).toContain(`  Tree ${verified.slice(0, 7)} annotato: officina signoff`)
+    spawnSync('git', ['add', '--all'], { cwd: root })
+    expect(spawnSync('git', ['write-tree'], { cwd: root, encoding: 'utf8' }).stdout.trim()).toBe(verified)
+  })
+
+  it('non annota un tree cambiato durante la corsa, né un rosso', () => {
+    const changed = repository({ ci: 'echo nuovo > nuovo.txt' })
+    const red = repository({ ci: 'exit 4' })
+
+    expect(gate(changed).stdout).toContain("  Tree non annotato: l'albero di lavoro è cambiato durante il gate")
+    expect(gate(red).status).toBe(4)
+    expect(existsSync(join(changed, VERIFIED))).toBe(false)
+    expect(existsSync(join(red, VERIFIED))).toBe(false)
   })
 })

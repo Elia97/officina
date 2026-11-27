@@ -31,7 +31,7 @@ function named(name: string): Step {
 
 const MIGRATE = 'pnpm exec officina migrate --script "$MIGRATE"'
 const MIGRATIONS = 'Migrazioni del branch di test'
-const COMMANDS = ['pnpm run ci', 'pnpm run build', 'pnpm run check:secrets']
+const COMMANDS = ['pnpm run test:integration', 'pnpm run ci', 'pnpm run build', 'pnpm run check:secrets']
 
 describe('actions/ci e i canary di check secrets', () => {
   it("li mette nell'ambiente dopo i test e prima della build, e cerca le chiavi quando la build è finita", () => {
@@ -50,6 +50,7 @@ describe('actions/ci e i canary di check secrets', () => {
 describe('actions/ci e il database di test', () => {
   it('migra il branch di test prima di `pnpm run ci`, solo quando il progetto dichiara `migrate`', () => {
     expect(position(MIGRATE)).toBeGreaterThanOrEqual(0)
+    expect(position(MIGRATE)).toBeLessThan(position('pnpm run test:integration'))
     expect(position(MIGRATE)).toBeLessThan(position('pnpm run ci'))
     expect(named(MIGRATIONS).if).toBe(
       expression(
@@ -121,6 +122,7 @@ describe('la shell delle migrazioni', () => {
 const JOB = { DATABASE_URL: CANARY, TEST_DATABASE_URL: 'postgres://dal-job' }
 
 describe.each([
+  ['pnpm run test:integration', {}, 'TEST_DATABASE_URL'],
   ['pnpm run ci', {}, 'TEST_DATABASE_URL'],
   ['pnpm run build', { DATABASE_URL: CANARY }, 'DATABASE_URL'],
   ['pnpm run check:secrets', { DATABASE_URL: CANARY }, 'DATABASE_URL'],

@@ -62,6 +62,14 @@ describe('officina', () => {
     expect(lines).toContain('docs-only=false')
   })
 
+  it('signoff senza un gate verde annotato esce 1, e con due ref esce 2', async () => {
+    const lines = silence()
+
+    expect(await run(['signoff'])).toBe(1)
+    expect(await run(['signoff', 'HEAD', 'main'])).toBe(2)
+    expect(lines.join('\n')).toContain('nessun gate verde annotato')
+  })
+
   it('gate passa al suo modulo e ne restituisce il codice', async () => {
     expect(await run(['gate'])).toBe(7)
   })

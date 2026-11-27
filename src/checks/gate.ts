@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { delimiter, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 
 import {
@@ -15,6 +15,8 @@ import {
   type Step,
   stepLine,
 } from '../lib/gate.ts'
+import { worktreeTree } from '../lib/git.ts'
+import { annotation, type Tree, VERIFIED_TREE } from '../lib/signoff.ts'
 
 const LOG_DIR = 'node_modules/.cache/officina/gate'
 
@@ -64,6 +66,23 @@ async function runAll(plan: GatePlan): Promise<number> {
   return 0
 }
 
+function currentTree(): Tree {
+  try {
+    return { tree: worktreeTree() }
+  } catch (error) {
+    return { error: (error as Error).message.split('\n')[0] ?? '' }
+  }
+}
+
+function annotate(before: Tree): void {
+  const { tree, line } = annotation(before, currentTree())
+  if (tree !== undefined) {
+    mkdirSync(dirname(VERIFIED_TREE), { recursive: true })
+    writeFileSync(VERIFIED_TREE, `${tree}\n`)
+  }
+  console.log(`${line}\n`)
+}
+
 export async function main(): Promise<number> {
   const plan = loadPlan()
   if (typeof plan === 'string') {
@@ -74,8 +93,12 @@ export async function main(): Promise<number> {
   mkdirSync(LOG_DIR, { recursive: true })
   console.log(`\n${header(plan)}\n`)
   const started = performance.now()
+  const before = currentTree()
   const code = await runAll(plan)
-  if (code === 0) console.log(`\n  Verde in ${duration(performance.now() - started)}.\n`)
+  if (code === 0) {
+    console.log(`\n  Verde in ${duration(performance.now() - started)}.`)
+    annotate(before)
+  }
   return code
 }
 
