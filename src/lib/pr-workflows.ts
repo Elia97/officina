@@ -10,9 +10,9 @@ const PR_TITLE_WORKFLOW = '.github/workflows/pr-title.yml'
 const RELEASE_BRANCH = 'release-please--'
 
 // GitHub: i `permissions` di un job sostituiscono per intero quelli del workflow, non si sommano.
-function grantsPullRequests(permissions: unknown): boolean {
+function grants(permissions: unknown, scope: string): boolean {
   if (permissions === 'read-all' || permissions === 'write-all') return true
-  return isRecord(permissions) && ['read', 'write'].includes(String(permissions['pull-requests']))
+  return isRecord(permissions) && ['read', 'write'].includes(String(permissions[scope]))
 }
 
 function ciJobs(source: string): { workflow: Record<string, unknown>; jobs: [string, Record<string, unknown>][] } {
@@ -33,12 +33,28 @@ const using = (jobs: [string, Record<string, unknown>][], action: string) =>
   jobs.filter(([, job]) => stepsOf(job).some((step) => usesAction(step, action)))
 
 function permissionGaps(workflow: Record<string, unknown>, jobs: [string, Record<string, unknown>][]): ContractGap[] {
-  return using(jobs, 'ci')
-    .filter(([, job]) => !grantsPullRequests('permissions' in job ? job.permissions : workflow.permissions))
-    .map(([name]) => ({
-      path: CI_WORKFLOW,
-      message: `il job \`${name}\` usa \`Elia97/officina/actions/ci\` senza \`pull-requests: read\`: il passo del titolo legge la PR dall'API, e su un repository privato fallisce`,
-    }))
+  return using(jobs, 'ci').flatMap(([name, job]): ContractGap[] => {
+    const permissions = 'permissions' in job ? job.permissions : workflow.permissions
+    return [
+      ...(grants(permissions, 'pull-requests')
+        ? []
+        : [
+            {
+              path: CI_WORKFLOW,
+              message: `il job \`${name}\` usa \`Elia97/officina/actions/ci\` senza \`pull-requests: read\`: il passo del titolo legge la PR dall'API, e su un repository privato fallisce`,
+            },
+          ]),
+      ...(grants(permissions, 'statuses')
+        ? []
+        : [
+            {
+              path: CI_WORKFLOW,
+              severity: 'warning' as const,
+              message: `il job \`${name}\` usa \`Elia97/officina/actions/ci\` senza \`statuses: read\`: \`officina scope\` non legge lo stato gate del commit, e la CI fa sempre il percorso completo`,
+            },
+          ]),
+    ]
+  })
 }
 
 const reviewGaps = (jobs: [string, Record<string, unknown>][]): ContractGap[] =>

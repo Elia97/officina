@@ -23,7 +23,7 @@ const ci = ({ workflow = '', job = '', fallowIf = RELEASE_IF } = {}) =>
 const gaps = (contents: Record<string, string>) =>
   pullRequestGaps(files(contents)).map(({ path, message, severity }) => ({ path, severity, message }))
 
-const READ = 'permissions:\n  contents: read\n  pull-requests: read\n'
+const READ = 'permissions:\n  contents: read\n  pull-requests: read\n  statuses: read\n'
 
 describe('pullRequestGaps', () => {
   it('non trova niente con il permesso nel workflow, fallow fuori dalla release e nessun pr-title.yml', () => {
@@ -31,7 +31,9 @@ describe('pullRequestGaps', () => {
   })
 
   it('accetta il permesso sul job, e read-all o write anche lì', () => {
-    expect(gaps({ [CI]: ci({ job: '    permissions:\n      pull-requests: write\n' }) })).toEqual([])
+    expect(gaps({ [CI]: ci({ job: '    permissions:\n      pull-requests: write\n      statuses: read\n' }) })).toEqual(
+      [],
+    )
     expect(gaps({ [CI]: ci({ job: '    permissions: read-all\n' }) })).toEqual([])
   })
 
@@ -45,7 +47,20 @@ describe('pullRequestGaps', () => {
   it('i permissions del job sostituiscono quelli del workflow, come fa GitHub', () => {
     const project = { [CI]: ci({ workflow: READ, job: '    permissions:\n      contents: read\n' }) }
 
-    expect(gaps(project)).toHaveLength(1)
+    expect(gaps(project).map(({ severity }) => severity)).toEqual([undefined, 'warning'])
+  })
+
+  it('senza statuses: read è un avviso: la CI non legge lo stato gate e fa il percorso completo', () => {
+    const workflow = 'permissions:\n  contents: read\n  pull-requests: read\n'
+
+    expect(gaps({ [CI]: ci({ workflow }) })).toEqual([
+      {
+        path: CI,
+        severity: 'warning',
+        message:
+          'il job `ci` usa `Elia97/officina/actions/ci` senza `statuses: read`: `officina scope` non legge lo stato gate del commit, e la CI fa sempre il percorso completo',
+      },
+    ])
   })
 
   it('il job di fallow senza if sulla release è un avviso', () => {

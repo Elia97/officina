@@ -1,11 +1,13 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import process from 'node:process'
 
-type GitOptions = { allowFailure?: boolean }
+type GitOptions = { allowFailure?: boolean; env?: NodeJS.ProcessEnv }
 
-function git(args: string[], { allowFailure = false }: GitOptions = {}): string {
-  const result = spawnSync('git', args, { encoding: 'utf8' })
+function git(args: string[], { allowFailure = false, env }: GitOptions = {}): string {
+  const result = spawnSync('git', args, { encoding: 'utf8', env })
   if (result.status !== 0) {
     if (allowFailure) return ''
     throw new Error(result.stderr.trim() || `git ${args.join(' ')} fallito`)
@@ -69,6 +71,39 @@ function pushBefore(): string | undefined {
 }
 
 export const eventBase = (): string | undefined => pullRequestShas()?.base ?? pushBefore()
+
+export function eventHead(): string | undefined {
+  const after = eventPayload('push')?.after
+  return pullRequestShas()?.head ?? (typeof after === 'string' && !/^0+$/.test(after) ? after : undefined)
+}
+
+export const treeOf = (ref: string): string => git(['rev-parse', '--verify', '--quiet', `${ref}^{tree}`]).trim()
+
+export const commitOf = (ref: string): string => git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).trim()
+
+// Un indice copiato tiene la cache degli stat di quello vero: `git add` riapre solo i file cambiati.
+// `assume-unchanged` (tag minuscolo in `ls-files -v`) e `skip-worktree` (`S`): `git add` non rilegge quei file.
+function hiddenFromAdd(): string | undefined {
+  return gitPaths('ls-files', ['-v'])
+    .find((entry) => /^[a-zS] /.test(entry))
+    ?.slice(2)
+}
+
+export function worktreeTree(): string {
+  const hidden = hiddenFromAdd()
+  if (hidden !== undefined)
+    throw new Error(`${hidden} è assume-unchanged o skip-worktree, e il tree non lo legge dall'albero di lavoro`)
+  const index = git(['rev-parse', '--git-path', 'index']).trim()
+  const dir = mkdtempSync(join(tmpdir(), 'officina-tree-'))
+  const env = { ...process.env, GIT_INDEX_FILE: join(dir, 'index') }
+  try {
+    if (existsSync(index)) copyFileSync(index, env.GIT_INDEX_FILE)
+    git(['add', '--all'], { env })
+    return git(['write-tree'], { env }).trim()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
 
 export function changedSince(base: string): string[] {
   ensureCommit(base, { shallow: true })

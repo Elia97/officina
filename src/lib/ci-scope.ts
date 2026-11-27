@@ -1,4 +1,4 @@
-export type CiScope = { path: 'docs' | 'release' | 'full'; reason: string }
+export type CiScope = { path: 'docs' | 'release' | 'gate' | 'full'; reason: string }
 
 type Changed = (base: string) => string[]
 type Read = (ref: string, path: string) => string

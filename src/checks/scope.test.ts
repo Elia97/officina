@@ -1,9 +1,14 @@
+import { execFileSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { cleanFakeGh, useFakeGh } from '../lib/test-helpers/fake-gh.ts'
 import { cleanScopeRepos, repoWithChange, stubEvent } from '../lib/test-helpers/scope-repo.ts'
 import { main as scope } from './scope.ts'
 
-afterEach(cleanScopeRepos)
+afterEach(() => {
+  cleanFakeGh()
+  cleanScopeRepos()
+})
 
 function run(): { code: number; out: string[]; err: string[] } {
   const out: string[] = []
@@ -31,7 +36,7 @@ describe('officina scope su un push', () => {
 
     expect(run()).toEqual({
       code: 0,
-      out: ['docs-only=true', 'release-only=false'],
+      out: ['docs-only=true', 'release-only=false', 'gate=false'],
       err: ['percorso veloce: solo documenti (1 file)'],
     })
   })
@@ -42,8 +47,10 @@ describe('officina scope su un push', () => {
 
     expect(run()).toEqual({
       code: 0,
-      out: ['docs-only=false', 'release-only=false'],
-      err: ['percorso completo: src/lib/site.ts non è un documento'],
+      out: ['docs-only=false', 'release-only=false', 'gate=false'],
+      err: [
+        "percorso completo: src/lib/site.ts non è un documento; l'evento non ha un commit di cui leggere lo stato gate",
+      ],
     })
   })
 
@@ -57,7 +64,7 @@ describe('officina scope su un push', () => {
 
     expect(run()).toEqual({
       code: 0,
-      out: ['docs-only=false', 'release-only=true'],
+      out: ['docs-only=false', 'release-only=true', 'gate=false'],
       err: ['percorso della release: solo .release-please-manifest.json, CHANGELOG.md, package.json (version)'],
     })
   })
@@ -68,8 +75,29 @@ describe('officina scope su un push', () => {
 
     expect(run()).toEqual({
       code: 0,
-      out: ['docs-only=false', 'release-only=false'],
-      err: ['percorso completo: package.json cambia oltre a version'],
+      out: ['docs-only=false', 'release-only=false', 'gate=false'],
+      err: [
+        "percorso completo: package.json cambia oltre a version; l'evento non ha un commit di cui leggere lo stato gate",
+      ],
+    })
+  })
+})
+
+describe('officina scope con lo stato gate', () => {
+  it('che tocca il codice, con lo stato gate verde sul commit e lo stesso tree, stampa gate=true', () => {
+    const before = repoWithChange((write) => write('src/lib/site.ts', "export const SITE = { url: '' }\n"))
+    const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim()
+    const after = git('rev-parse', 'HEAD')
+    stubEvent('push', { before, after })
+    useFakeGh({
+      FAKE_GH_STATUS: JSON.stringify({ statuses: [{ context: 'gate', state: 'success' }] }),
+      FAKE_GH_TREE: git('rev-parse', 'HEAD^{tree}'),
+    })
+
+    expect(run()).toEqual({
+      code: 0,
+      out: ['docs-only=false', 'release-only=false', 'gate=true'],
+      err: [`percorso del gate: stato gate verde su ${after.slice(0, 7)}, con il tree del checkout`],
     })
   })
 })

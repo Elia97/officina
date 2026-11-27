@@ -5,20 +5,8 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 
-interface Step {
-  name?: string
-  id?: string
-  if?: string
-  run?: string
-  uses?: string
-  with?: Record<string, string>
-}
-
-const { runs } = parse(readFileSync(new URL('../../actions/ci/action.yml', import.meta.url), 'utf8')) as {
-  runs: { steps: Step[] }
-}
+import { afterScope, runs, type Step, scope, started } from './test-helpers/action-ci-steps.ts'
 
 const expression = (body: string) => `\${{ ${body} }}`
 const FULL_RUN =
@@ -26,7 +14,6 @@ const FULL_RUN =
 const NOT_RELEASE = /^\$\{\{ (?:[^|]+ && )?steps\.scope\.outputs\.release-only != 'true' \}\}$/
 
 const index = (wanted: (step: Step) => boolean): number => runs.steps.findIndex(wanted)
-const scope = index(({ id }) => id === 'scope')
 const documents = index(({ name }) => name === 'Controlli dei documenti')
 const install = index(({ run }) => run?.trim() === 'pnpm install --frozen-lockfile')
 const title = index(({ name }) => name === 'Titolo della PR')
@@ -34,24 +21,7 @@ const setupNode = runs.steps.flatMap((step, position) =>
   step.uses?.startsWith('actions/setup-node@') ? [position] : [],
 )
 const beforeChecks = [setupNode[1] ?? -1, install, title]
-const afterScope = runs.steps.filter((_, position) => position > scope)
-
-// Le condizioni dell'action sono termini `a == 'x'` o `a != 'x'` uniti da `&&`: basta questo per valutarle.
-function runsWith(step: Step, values: Record<string, string>): boolean {
-  const body = step.if?.replace(/^\$\{\{ (.*) \}\}$/, '$1')
-  if (body === undefined) return true
-  return body.split(' && ').every((term) => {
-    const [, name = '', operator, literal] = /^(\S+) (==|!=) '(.*)'$/.exec(term) ?? []
-    if (operator === undefined) throw new Error(`condizione non prevista: ${term}`)
-    return (values[name] === literal) === (operator === '==')
-  })
-}
-
-const INPUTS = { 'inputs.e2e': 'true', 'inputs.migrate': 'db:migrate', 'github.event_name': 'pull_request' }
-const started = (outputs: Record<string, string>, event: Record<string, string> = {}) =>
-  afterScope
-    .filter((step) => runsWith(step, { ...INPUTS, ...event, ...outputs }))
-    .map((step) => runs.steps.indexOf(step))
+const integration = index(({ name }) => name === 'pnpm run test:integration')
 
 const ACTION_DIR = fileURLToPath(new URL('../../actions/ci', import.meta.url))
 const scopeScript = runs.steps[scope]?.run ?? ''
@@ -102,7 +72,7 @@ describe("actions/ci sceglie il percorso prima dell'install", () => {
     const { status } = runScope(ACTION_DIR, TEMP)
 
     expect(status).toBe(0)
-    expect(readFileSync(OUTPUT, 'utf8')).toBe('docs-only=false\nrelease-only=false\n')
+    expect(readFileSync(OUTPUT, 'utf8')).toBe('docs-only=false\nrelease-only=false\ngate=false\n')
   })
 
   it('se lo scope fallisce lo dice e lascia il percorso completo, senza fermare il job', () => {
@@ -134,7 +104,7 @@ describe('actions/ci e il percorso veloce dei documenti', () => {
 
   it('ogni altro passo dopo la preparazione gira solo sul percorso completo, anche con la sua condizione', () => {
     const rest = afterScope.filter(
-      (step) => step !== runs.steps[documents] && !beforeChecks.includes(runs.steps.indexOf(step)),
+      (step) => ![documents, integration, ...beforeChecks].includes(runs.steps.indexOf(step)),
     )
 
     expect(rest.length).toBeGreaterThan(0)
@@ -157,7 +127,9 @@ describe('actions/ci sui tre percorsi', () => {
   })
 
   it('sul percorso completo parte ogni passo tranne quello dei documenti, anche con un officina che non scrive release-only', () => {
-    const full = afterScope.map((step) => runs.steps.indexOf(step)).filter((position) => position !== documents)
+    const full = afterScope
+      .map((step) => runs.steps.indexOf(step))
+      .filter((position) => position !== documents && position !== integration)
 
     expect(started({ 'steps.scope.outputs.docs-only': 'false', 'steps.scope.outputs.release-only': 'false' })).toEqual(
       full,

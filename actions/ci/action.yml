@@ -33,6 +33,10 @@ runs:
     - name: Percorso della corsa
       id: scope
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        OFFICINA_MIGRATE: ${{ inputs.migrate }}
       run: |
         node "$GITHUB_ACTION_PATH/../../src/checks/scope.ts" >> "$GITHUB_OUTPUT" || echo "::warning::officina scope non è riuscito: si fa il percorso completo"
 
@@ -81,7 +85,7 @@ runs:
         pnpm run doctor
 
     - name: Tipi generati di Astro
-      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
+      if: ${{ steps.scope.outputs.gate != 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       run: |
         pnpm exec astro sync || echo "::warning::astro sync non è riuscito: si prosegue senza i tipi generati"
       shell: bash
@@ -101,8 +105,19 @@ runs:
         pnpm exec officina migrate --script "$MIGRATE"
 
     # L'`env:` di un passo vince su quello del job anche quando vale ''; il log intitola il passo con la prima riga di `run`.
+    - name: pnpm run test:integration
+      if: ${{ inputs.migrate != '' && steps.scope.outputs.gate == 'true' }}
+      shell: bash
+      env:
+        OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
+      run: |
+        # pnpm run test:integration
+        [ -z "$OFFICINA_TEST_DATABASE_URL" ] || export TEST_DATABASE_URL="$OFFICINA_TEST_DATABASE_URL"
+        unset OFFICINA_TEST_DATABASE_URL
+        pnpm run test:integration
+
     - name: pnpm run ci
-      if: ${{ steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
+      if: ${{ steps.scope.outputs.gate != 'true' && steps.scope.outputs.docs-only != 'true' && steps.scope.outputs.release-only != 'true' }}
       shell: bash
       env:
         OFFICINA_TEST_DATABASE_URL: ${{ inputs.database-url }}
